@@ -36,7 +36,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
   // physical parameters -- somewhat arbitrary
   double cx = 100, cy = 30; // cell size
   double thresh = 1;        // encounter threshold
-  int n = 140;
+  int n = 140;              // number of mitos
   double idx, idy, ix, iy;
   double *x, *y;
   double *dx, *dy;
@@ -266,13 +266,13 @@ int main(void)
 	      for(P.inter = 0; P.inter <= 10; P.inter += 5) {
 	        if(P.kmito * P.D <= 1.01)
 	 	  {
-		    //		  sprintf(str, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f", P.D, P.kon, P.koff, P.V, P.dmito, P.kmito);
+		    printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
 		    sprintf(str, "expt-0.csv");
 		    AMFromSimulation(P, ns, meanmin, meanedges, 0, str); expt++;
 		    fp= fopen("outstatsscan.csv", "a");
   
 		    for(i = 0; i < ns; i++)
-		      fprintf(fp, "%.3f,%i,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, meanmin[i], meanedges[i]);
+		      fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, meanmin[i], meanedges[i]);
 		    fclose(fp);
 		  }
 	      }
