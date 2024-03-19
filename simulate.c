@@ -36,7 +36,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
   // physical parameters -- somewhat arbitrary
   double cx = 100, cy = 30; // cell size
   double thresh = 1;        // encounter threshold
-  int n = 140;              // number of mitos
+  int n = 140;
   double idx, idy, ix, iy;
   double *x, *y;
   double *dx, *dy;
@@ -72,7 +72,6 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
   am = (int*)malloc(sizeof(int)*n*n);
   scale = (double*)malloc(sizeof(double)*n);
 
-  // loop over different random instances
   for(sample = 0; sample < nsample; sample++)
     {
       if(sample % 10 == 0)
@@ -87,7 +86,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 	  dx[i] = dy[i] = 0;
 	  active[i] = (i < P.activep*n);
 	}
-      // loop while we have fewer than desired encounters
+      // loop over time scale (100 frames, each 2s)
       timer = 0;
       while(timer < 1e2)
 	{
@@ -142,6 +141,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		}
 	      if(active[i])
 		{
+		  ix = iy = 0;
 		  // apply "hydrodynamic" interactions if appropriate
 		  if(P.inter)
 		    {
@@ -154,15 +154,18 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 			      idy += (y[i]-y[j]);
 			    }
 			}
-		      if(idx < 0) ix = -1*(P.inter < 0 ? -1 : 1); else ix = 1*(P.inter < 0 ? -1 : 1);
-		      if(idy < 0) iy = -1*(P.inter < 0 ? -1 : 1); else iy = 1*(P.inter < 0 ? -1 : 1);
+		      // when P.inter is tiny but nonzero, idx is presumably still zero? because only i=j fulfils conditional above?
+		      if(idx < 0) ix = -1*(P.inter < 0 ? -1 : 1); else if(idx > 0) ix = 1*(P.inter < 0 ? -1 : 1);
+		      if(idy < 0) iy = -1*(P.inter < 0 ? -1 : 1); else if(idy > 0) iy = 1*(P.inter < 0 ? -1 : 1);
+		      //	  printf("%e %e %e %e\n", idx, idy, ix, iy);
 		    }
 		  // attach/detach from cytoskeleton
 		  if(dx[i] == 0 && dy[i] == 0 && RND < P.kon)
 		    {
+		      // on to ballistic motion
 		      // choose horizontal or vertical motion randomly
-		      if(RND < 0.5) { dx[i] = (P.inter ? ix : (RND < 0.5 ? -1 : 1))*P.V; dy[i] = 0; }
-		      else { dx[i] = 0; dy[i] = (P.inter ? iy : (RND < 0.5 ? -1 : 1))*P.V; }
+		      if(RND < 0.5) { dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V; dy[i] = 0; }
+		      else { dx[i] = 0; dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V; }
 		    }
 		  else if((dx[i] != 0 || dy[i] != 0) && RND < P.koff)
 		    {
@@ -230,23 +233,15 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
     }
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
   Params P;
   int i;
   FILE *fp;
   double *meanmin, *meanedges;
-  int ns = 100;
+  int ns = 1;
   int expt = 0;
-  int fullsim;
-
-  // from command line, are we running the full parameter sweep?
-  fillsim = 0;
-  if(argc == 2)
-    {
-      if(strcmp(argv[1], "--full") == 0)
-	fullsim = 1;
-    }
+  char str[200];
   
   meanmin = (double*)malloc(sizeof(double)*ns*100);
   meanedges = (double*)malloc(sizeof(double)*ns*100);
@@ -255,7 +250,41 @@ int main(int argc, char *argv[])
 
   double scaled = 0.2, scalev = 0.5;
 
+  // big parameter sweep of system
+  
+  fp= fopen("outstatsscan.csv", "w");
+  fprintf(fp, "D,inter,kon,koff,V,dmito,kmito,expt,sample,meanmin,meanedges\n");
+  fclose(fp);
+  
+  P.rhoon = 1; P.rhooff = 0; P.activep = 1;
+  for(P.D = 0.05; P.D <= 0.21; P.D *= 2) {
+    for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
+      for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
+	for(P.V = 0.5; P.V <= 4.01; P.V *= 2) {
+	  for(P.dmito = 1; P.dmito <= 4.01; P.dmito *= 2) {
+	    for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
+	      for(P.inter = 0; P.inter <= 10; P.inter += 5) {
+	        if(P.kmito * P.D <= 1.01)
+	 	  {
+		    //		  sprintf(str, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f", P.D, P.kon, P.koff, P.V, P.dmito, P.kmito);
+		    sprintf(str, "expt-0.csv");
+		    AMFromSimulation(P, ns, meanmin, meanedges, 0, str); expt++;
+		    fp= fopen("outstatsscan.csv", "a");
+  
+		    for(i = 0; i < ns; i++)
+		      fprintf(fp, "%.3f,%i,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, meanmin[i], meanedges[i]);
+		    fclose(fp);
+		  }
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
   // here we go through a collection of specifically-chosen parameterisations, simulating behaviour and outputting trajectories to files
+  
   P.inter = 0;
   // 0
   P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 0; P.kmito = 1;
@@ -306,40 +335,6 @@ int main(int argc, char *argv[])
   fprintf(fp, "params,sample,meanmin,meanedges\n");
   for(i = 0; i < ns*expt; i++)
     fprintf(fp, "%i,%i,%f,%f\n", i/ns, i%ns, meanmin[i], meanedges[i]);
-
-  double scaled = 0.2, scalev = 0.5;
-
-  if(fullsim == 1)
-    {
-      fp= fopen("outstatsscan.csv", "w");
-      fprintf(fp, "D,kon,koff,V,dmito,kmito,expt,sample,meanmin,meanedges\n");
-      fclose(fp);
   
-      P.rhoon = 1; P.rhooff = 0; P.activep = 1;
-      for(P.D = 0.05; P.D <= 0.21; P.D *= 2) {
-	for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
-	  for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
-	    for(P.V = 0.5; P.V <= 4.01; P.V *= 2) {
-	      for(P.dmito = 1; P.dmito <= 4.01; P.dmito *= 2) {
-		for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
-
-		  if(P.kmito * P.D <= 1.01)
-		    {
-		      sprintf(str, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f", P.D, P.kon, P.koff, P.V, P.dmito, P.kmito);
-		      AMFromSimulation(P, ns, meanmin, meanedges, 0, str); expt++;
-		      fp= fopen("outstatsscan.csv", "a");
-  
-		      for(i = 0; i < ns; i++)
-			fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f\n", P.D, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, meanmin[i], meanedges[i]);
-		      fclose(fp);
-		    }
-		}
-	      }
-	    }
-	  }
-	}
-      }
-    }
- 
   return 0;
 }
