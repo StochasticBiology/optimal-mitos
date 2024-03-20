@@ -1,7 +1,5 @@
 library(ggplot2)
 library(gridExtra)
-library(av)
-library(gganimate)
 library(igraph)
 library(ggraph)
 
@@ -165,7 +163,7 @@ dev.off()
 ######## now engage with experiments
 
 # read in WT samples
-expts.df = data.frame()
+expts.df = expts.traj.df = data.frame()
 for(i in 1:12) {
   fname = paste(c("../plant-mito-dynamics-main\ 3/mtgfp-rawtrajectories/mtGFP-", i, ".xml-stats.csv"), collapse="")
   tmp = read.csv(fname)
@@ -173,6 +171,19 @@ for(i in 1:12) {
   tmp$glabel = "WT"
   tmp$mean.halo.n = NULL
   expts.df = rbind(expts.df, tmp)
+#  fname = paste(c("../plant-mito-dynamics-main\ 3/mtgfp-rawtrajectories/mtGFP-", i, ".xml-rawtrajs.csv"), collapse="")
+#  tmp = read.csv(fname)
+#  tmp$elabel = i
+#  tmp$glabel = "WT"
+#  expts.traj.df = rbind(expts.traj.df, tmp)
+}
+
+for(i in 1:3) {
+  fname = paste(c("../plant-mito-dynamics-main\ 3/mtgfp-rawtrajectories/mtGFP-", i, ".xml-rawtrajs.csv"), collapse="")
+  tmp = read.csv(fname)
+  tmp$elabel = i
+  tmp$glabel = "WT"
+  expts.traj.df = rbind(expts.traj.df, tmp)
 }
 
 # read in msh1 samples
@@ -183,7 +194,15 @@ for(i in 1:12) {
   tmp$glabel = "msh1"
   tmp$mean.halo.n = NULL
   expts.df = rbind(expts.df, tmp)
+#  fname = paste(c("../plant-mito-dynamics-main\ 3/msh1-rawtrajectories/MSH-", i, ".xml-rawtrajs.csv"), collapse="")
+#  tmp = read.csv(fname)
+#  tmp$elabel = i
+#  tmp$glabel = "msh1"
+#  expts.traj.df = rbind(expts.traj.df, tmp)
 }
+
+ggplot(expts.traj.df, aes(x=x,y=y,color=factor(traj))) + geom_line() + 
+  facet_wrap(~elabel) + theme(legend.position="none")
 
 # plot summary of the experimental samples
 ggplot() + 
@@ -191,7 +210,7 @@ ggplot() +
 
 # contruct piece-by-piece summary figure of experimental data overlaid on theoretical behaviours
 g.pset = ggplot() + geom_point(data=samples, aes(x=x, y=y, color=expt), alpha = 0.2) + 
-  geom_point() + theme_light() + theme(legend.position = "none") + ylim(-4.5,2.5) + xlim(-1.5,4) +
+  geom_point() + theme_light() + theme(legend.position = "none") + #ylim(-4.5,2.5) + xlim(-1.5,4) +
   xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
 
 g.pset.hull = g.pset + geom_point(data=mins, aes(x=x, y=y), color="red", size = 1) 
@@ -216,7 +235,51 @@ png("pset-expt-4.png", width=500*myres, height=300*myres, res=72*myres)
 print(g.pset.hull.exp2)
 dev.off()
 
-##############
+#### pick a subset of samples with cell dimensions that correspond to a given experiment
+
+# this is a reasonable range for experiment 3, for example
+xr = c(80, 120); yr = c(20, 40); nr = c(100, 160)
+#xr = c(50, 70); yr = c(20, 40); nr = c(60, 100)
+
+subbing = samples[((samples$Cx > xr[1] & samples$Cx < xr[2]) & 
+                     (samples$Cy > yr[1] & samples$Cy < yr[2]) & 
+                     (samples$Cn > nr[1] & samples$Cn < nr[2])),]
+gs.pset = ggplot() + geom_point(data=subbing, aes(x=x, y=y, color=expt), alpha = 0.2) + 
+  geom_point() + theme_light() + theme(legend.position = "none") + #ylim(-4.5,2.5) + xlim(-1.5,4) +
+  xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
+
+gs.pset.hull = gs.pset #+ geom_point(data=mins, aes(x=x, y=y), color="red", size = 1) 
+
+gs.pset.hull.exp1 = gs.pset.hull + 
+  geom_point(data = expts.df[expts.df$glabel == "WT" & expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), color="black", size=1) 
+
+gs.pset.hull.exp2 = gs.pset.hull.exp1 + 
+  geom_point(data = expts.df[expts.df$glabel == "msh1" & expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), color="orange", alpha = 0.2, size=1) 
+
+gs.pset.hull.exp2
+
+#### exploring determinants of Pareto front
+baseplot = ggplot(data=samples, aes(x=x,y=y)) + scale_color_gradient(low = "blue", high = "red") + theme_light() #+ theme(legend.position = "none") 
+
+p.alpha = 0.2
+p.size = 1
+p.list = list(
+  baseplot + geom_point(aes(color=log(Cn/(Cx*Cy))), alpha = 0.2), 
+  baseplot + geom_point(aes(color=Cn), alpha = 0.2), 
+  baseplot + geom_point(aes(color=Cx*Cy), alpha = 0.2), 
+  baseplot + geom_point(aes(color=inter), alpha=p.alpha, size=p.size), 
+  baseplot + geom_point(aes(color=D), alpha=p.alpha, size=p.size),
+  baseplot + geom_point(aes(color=V), alpha=p.alpha, size=p.size), 
+  baseplot + geom_point(aes(color=dmito), alpha=p.alpha, size=p.size), 
+  baseplot + geom_point(aes(color=kmito), alpha=p.alpha, size=p.size),
+  baseplot + geom_point(aes(color=kon), alpha=p.alpha, size=p.size), 
+  baseplot + geom_point(aes(color=koff), alpha=p.alpha, size=p.size), 
+  baseplot + geom_point(aes(color=kon/koff), alpha=p.alpha, size=p.size) )
+
+png("scatter-vars.png", width=900*sf, height=600*sf, res=72*sf)
+grid.arrange(grobs=p.list)
+dev.off()
+
 ###### not clear from here onwards
 
 posts = read.csv("outstatsinfer.csv")
