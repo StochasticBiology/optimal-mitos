@@ -255,7 +255,7 @@ int main(void)
   // big parameter sweep of system
   
   fp= fopen("outstatsscan.csv", "w");
-  fprintf(fp, "D,inter,kon,koff,V,dmito,kmito,expt,sample,meanmin,meanedges\n");
+  fprintf(fp, "D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
   fclose(fp);
 
   // for the samll set here we're looking at 13.5k simulations -- a couple of minutes
@@ -279,9 +279,7 @@ int main(void)
 			P.Cn = 50 + RND*150;
 		        AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
 			expt++;
-  
-			for(i = 0; i < ns; i++)
-			  fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[i], meanedges[i]);
+  			fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
 		      }
 		    fclose(fp);
 		  }
