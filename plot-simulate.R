@@ -165,21 +165,13 @@ dev.off()
 # read in WT samples
 expts.df = expts.traj.df = data.frame()
 for(i in 1:12) {
-  fname = paste(c("../plant-mito-dynamics-main\ 3/mtgfp-rawtrajectories/mtGFP-", i, ".xml-stats.csv"), collapse="")
+  fname = paste(c("plant-mito-dynamics-main/mtgfp-rawtrajectories/mtGFP-", i, ".xml-stats.csv"), collapse="")
   tmp = read.csv(fname)
   tmp$elabel = i
   tmp$glabel = "WT"
   tmp$mean.halo.n = NULL
   expts.df = rbind(expts.df, tmp)
-#  fname = paste(c("../plant-mito-dynamics-main\ 3/mtgfp-rawtrajectories/mtGFP-", i, ".xml-rawtrajs.csv"), collapse="")
-#  tmp = read.csv(fname)
-#  tmp$elabel = i
-#  tmp$glabel = "WT"
-#  expts.traj.df = rbind(expts.traj.df, tmp)
-}
-
-for(i in 1:3) {
-  fname = paste(c("../plant-mito-dynamics-main\ 3/mtgfp-rawtrajectories/mtGFP-", i, ".xml-rawtrajs.csv"), collapse="")
+  fname = paste(c("plant-mito-dynamics-main/mtgfp-rawtrajectories/mtGFP-", i, ".xml-rawtrajs.csv"), collapse="")
   tmp = read.csv(fname)
   tmp$elabel = i
   tmp$glabel = "WT"
@@ -188,17 +180,17 @@ for(i in 1:3) {
 
 # read in msh1 samples
 for(i in 1:12) {
-  fname = paste(c("../plant-mito-dynamics-main\ 3/msh1-rawtrajectories/MSH-", i, ".xml-stats.csv"), collapse="")
+  fname = paste(c("plant-mito-dynamics-main/msh1-rawtrajectories/MSH-", i, ".xml-stats.csv"), collapse="")
   tmp = read.csv(fname)
   tmp$elabel = i
   tmp$glabel = "msh1"
   tmp$mean.halo.n = NULL
   expts.df = rbind(expts.df, tmp)
-#  fname = paste(c("../plant-mito-dynamics-main\ 3/msh1-rawtrajectories/MSH-", i, ".xml-rawtrajs.csv"), collapse="")
-#  tmp = read.csv(fname)
-#  tmp$elabel = i
-#  tmp$glabel = "msh1"
-#  expts.traj.df = rbind(expts.traj.df, tmp)
+  fname = paste(c("plant-mito-dynamics-main/msh1-rawtrajectories/MSH-", i, ".xml-rawtrajs.csv"), collapse="")
+  tmp = read.csv(fname)
+  tmp$elabel = i
+  tmp$glabel = "msh1"
+  expts.traj.df = rbind(expts.traj.df, tmp)
 }
 
 ggplot(expts.traj.df, aes(x=x,y=y,color=factor(traj))) + geom_line() + 
@@ -279,6 +271,11 @@ p.list = list(
 png("scatter-vars.png", width=900*sf, height=600*sf, res=72*sf)
 grid.arrange(grobs=p.list)
 dev.off()
+
+# So the specific case koff = 0 splits the distribution. Removing this:
+# - Higher kon/koff and V pushes us to the low-y Pareto bound
+# - Higher kmito generally pushes us to the Parteo front
+# - Density based sets up an x-gradient across the scatter
 
 ###### not clear from here onwards
 
