@@ -6,6 +6,8 @@
 
 // parameter set for a simulation
 typedef struct {
+  double Cx, Cy;
+  int Cn;
   double D, kon, koff, rhoon, rhooff, activep, V, dmito, kmito, inter;
 } Params;
 
@@ -34,9 +36,9 @@ double gsl_ran_gaussian(const double sigma)
 void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges, int output, char *fname)
 {
   // physical parameters -- somewhat arbitrary
-  double cx = 100, cy = 30; // cell size
-  double thresh = 1;        // encounter threshold
-  int n = 140;              // number of mitos
+  double cx = P.Cx, cy = P.Cy;  // cell size
+  double thresh = 1.6;          // encounter threshold
+  int n = P.Cn;                 // number of mitos
   double idx, idy, ix, iy;
   double *x, *y;
   double *dx, *dy;
@@ -239,7 +241,7 @@ int main(void)
   int i;
   FILE *fp;
   double *meanmin, *meanedges;
-  int ns = 1;
+  int ns = 5;
   int expt = 0;
   char str[200];
   
@@ -255,7 +257,8 @@ int main(void)
   fp= fopen("outstatsscan.csv", "w");
   fprintf(fp, "D,inter,kon,koff,V,dmito,kmito,expt,sample,meanmin,meanedges\n");
   fclose(fp);
-  
+
+  // for the samll set here we're looking at 13.5k simulations -- a couple of minutes
   P.rhoon = 1; P.rhooff = 0; P.activep = 1;
   for(P.D = 0.05; P.D <= 0.21; P.D *= 2) {
     for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
@@ -268,11 +271,18 @@ int main(void)
 	 	  {
 		    printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
 		    sprintf(str, "expt-0.csv");
-		    AMFromSimulation(P, ns, meanmin, meanedges, 0, str); expt++;
-		    fp= fopen("outstatsscan.csv", "a");
-  
+	            fp= fopen("outstatsscan.csv", "a");
 		    for(i = 0; i < ns; i++)
-		      fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, meanmin[i], meanedges[i]);
+		      {
+			P.Cx = 20 + RND*100;
+			P.Cy = 20 + RND*100;
+			P.Cn = 50 + RND*150;
+		        AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
+			expt++;
+  
+			for(i = 0; i < ns; i++)
+			  fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[i], meanedges[i]);
+		      }
 		    fclose(fp);
 		  }
 	      }
@@ -284,6 +294,8 @@ int main(void)
   }
 
   // here we go through a collection of specifically-chosen parameterisations, simulating behaviour and outputting trajectories to files
+
+  P.Cx = 100; P.Cy = 30; P.Cn = 140;
   
   P.inter = 0;
   // 0
