@@ -193,8 +193,61 @@ for(i in 1:12) {
   expts.traj.df = rbind(expts.traj.df, tmp)
 }
 
+# so revisiting this, when we compare experimental data to simulation WITH SAME DIMENSIONS as the experiment
+# we often fall on the front. but there's a subtlety about # of mitos vs # of trajectories to resolve
+complist = list()
+for(glab in c("WT", "msh1")) {
+  for(elab in 1:12) {
+    df.sub = expts.traj.df[expts.traj.df$elabel==elab & 
+                             expts.traj.df$glabel==glab,]
+    data.mat = df.sub[,3:4]
+    
+    pca = princomp(data.mat)
+    x.dim = max(pca$scores[,1])-min(pca$scores[,1])
+    y.dim = max(pca$scores[,2])-min(pca$scores[,2])
+    n.dim = max(df.sub$traj)
+    
+  #  subbing = samples[((samples$Cx > x.dim-10 & samples$Cx < x.dim+10) & 
+  #                       (samples$Cy > y.dim-10 & samples$Cy < y.dim+10) & 
+  #                       (samples$Cn > n.dim-10 & samples$Cn < n.dim+10)),]
+    subbing = stats.df[((stats.df$Cx > x.dim-10 & stats.df$Cx < x.dim+10) & 
+                      (stats.df$Cy > y.dim-10 & stats.df$Cy < y.dim+10) & 
+                      (stats.df$Cn > n.dim-10 & stats.df$Cn < n.dim+10)),]
+    
+    titlestr = paste0(glab, "-", elab, ": ", round(x.dim), "x", round(y.dim), "x", n.dim, collapse=" ")
+    complist[[length(complist)+1]] = ggplot() + 
+      geom_point(data=subbing, aes(x=x, y=y), alpha = 0.2) + 
+      geom_point(data = expts.df[expts.df$glabel == glab & expts.df$elabel == elab &
+                                   expts.df$frame==120,], 
+                 aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), 
+                 color="red") +
+      theme_light() + theme(legend.position = "none") + 
+      xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)") +
+      ggtitle(titlestr)
+      
+    
+  }
+}
+
+png("ind-trajs.png", width=1000*sf, height=800*sf, res=72*sf)
+ggarrange(plotlist = complist)
+dev.off()
+
+# here we don't look very Pareto -- but of course this isn't conditioned on density
+ggplot() +
+  geom_point(data=samples, aes(x=x,y=y,color="color")) +
+  geom_point(data=expts.df[expts.df$frame==120,], 
+       aes(x = log(1/mean.min.dist), y=log(1/mean.degree), color=glabel)) 
+ 
+           
+data.mat = expts.traj.df[expts.traj.df$elabel==12 & expts.traj.df$glabel=="WT",3:4]
+ggplot(data.mat, aes(x=x, y=y)) + geom_point()
+pca = princomp(data.mat)
+ggarrange(ggplot(as.data.frame(data.mat), aes(x=x, y=y)) + geom_point(),
+
+ggplot(as.data.frame(pca$scores), aes(x=Comp.1, y=Comp.2)) + geom_point())
 ggplot(expts.traj.df, aes(x=x,y=y,color=factor(traj))) + geom_line() + 
-  facet_wrap(~elabel) + theme(legend.position="none")
+  facet_wrap(glabel~elabel) + theme(legend.position="none")
 
 # plot summary of the experimental samples
 ggplot() + 

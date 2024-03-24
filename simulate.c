@@ -76,8 +76,8 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 
   for(sample = 0; sample < nsample; sample++)
     {
-      if(sample % 10 == 0)
-	printf("%s sample %i\n", fname, sample);
+      //   if(sample % 10 == 0)
+      //	printf("%s sample %i\n", fname, sample);
       // initialise empty encounter matrix and random positions
       for(i = 0; i < n*n; i++)
 	am[i] = 0;
@@ -241,7 +241,7 @@ int main(void)
   int i;
   FILE *fp;
   double *meanmin, *meanedges;
-  int ns = 5;
+  int ns = 100;
   int expt = 0;
   char str[200];
   
@@ -274,9 +274,9 @@ int main(void)
 	            fp= fopen("outstatsscan.csv", "a");
 		    for(i = 0; i < ns; i++)
 		      {
-			P.Cx = 20 + RND*100;
-			P.Cy = 20 + RND*100;
-			P.Cn = 50 + RND*150;
+			P.Cx = RND*200;
+			P.Cy = RND*100;
+			P.Cn = RND*500;
 		        AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
 			expt++;
   			fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
