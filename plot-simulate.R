@@ -399,10 +399,14 @@ hist.set = rbind(samples, mins, inv.set)
 new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
 
 # plot parameters in each class of closeness
-ggplot(new.hist.set, aes(x=value, y=after_stat(density), fill=hist.ref)) +
-  geom_histogram(position = "dodge", width=2) + 
-  facet_wrap(~name, scales = "free") +
+sf = 2
+png("inference.png", width=800*sf, height=200*sf, res=72*sf)
+ggplot(new.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
+  geom_bar(position = "dodge", alpha=0.8) + 
+  facet_wrap(~name, scales = "free", nrow = 2) +
+  labs(x = "", y="", fill = "Subset of\nmorphospace") +
   theme_minimal()
+dev.off()
 
 ####### exploring parameter determinants of Pareto front
 baseplot = ggplot(data=samples, aes(x=x,y=y)) + scale_color_gradient(low = "blue", high = "red") + theme_light() #+ theme(legend.position = "none") 
