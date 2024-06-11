@@ -2,12 +2,16 @@ library(ggplot2)
 library(gridExtra)
 library(igraph)
 library(ggraph)
+library(ggbeeswarm)
+library(dplyr)
+library(tidyr)
 
 ######## first a collection of example parameterisations
 
 # simulation code outputs trajectories to test[X].csv and adj mats to test[X].csv-am.csv, 
 # where X labels a particular example parameterisation
 
+# read these in and visualise
 exptset = ""
 picset = 10
 g1 = g1a = g3 = list()
@@ -19,7 +23,7 @@ for(expt in 1:12) {
   sub = traj.df[traj.df$frame > max(traj.df$frame)-picset,]
   g1[[expt]] = ggplot(sub, aes(x=y,y=x,color=factor(mito)))  + 
     geom_path() +theme_void() +theme(legend.position="none") 
-
+  
   # subset just final point and plot these in green with trajectories
   sub1 = traj.df[traj.df$frame == max(traj.df$frame),]
   g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
@@ -58,6 +62,11 @@ gc = grid.arrange(grobs = g3, nrow=2)
 
 gac = grid.arrange(ga, gc, nrow=2)
 
+grid.arrange(g1a[[4]], g3[[4]],
+             g1a[[10]], g3[[10]],
+             g1a[[8]], g3[[8]],
+             g1a[[5]], g3[[5]])
+
 # simulation code also outputs summary statistics (mean min distance, mean edges) to outstats.csv
 stats.df = read.csv(paste(c("outstats", exptset, ".csv"), collapse=""))
 
@@ -85,6 +94,7 @@ gx = ggplot(stats.df, aes(x=log(1/meanmin), y=log(1/meanedges),color=expt)) +
   geom_point(alpha=0.5, size=0.25) + theme_classic() + theme(legend.position="none") +
   xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
 
+myres = 2
 png("fullset.png", width=400*myres, height=300*myres, res=72*myres)
 gx 
 dev.off()
@@ -149,12 +159,12 @@ ghull = ggplot(samples, aes(x=x, y=y)) + geom_point() + geom_point(data=mins, ae
 
 # plot distributions of parameters that lie on the Pareto front
 gposts = grid.arrange(ggplot(mins, aes(x=D)) + geom_histogram(),
-             ggplot(mins, aes(x=kon)) + geom_histogram(),
-             ggplot(mins, aes(x=koff)) + geom_histogram(),
-             ggplot(mins, aes(x=V)) + geom_histogram(),
-             ggplot(mins, aes(x=dmito)) + geom_histogram(),
-             ggplot(mins, aes(x=kmito)) + geom_histogram(),
-             nrow=2)
+                      ggplot(mins, aes(x=kon)) + geom_histogram(),
+                      ggplot(mins, aes(x=koff)) + geom_histogram(),
+                      ggplot(mins, aes(x=V)) + geom_histogram(),
+                      ggplot(mins, aes(x=dmito)) + geom_histogram(),
+                      ggplot(mins, aes(x=kmito)) + geom_histogram(),
+                      nrow=2)
 
 png("inference-expt.png", width=800*myres, height=300*myres, res=72*myres)
 grid.arrange(ghull, gposts, nrow=1)
@@ -162,9 +172,13 @@ dev.off()
 
 ######## now engage with experiments
 
+n.wt = 18
+n.msh1 = 28
+n.friendly = 19
+
 # read in WT samples
-expts.df = expts.traj.df = data.frame()
-for(i in 1:12) {
+expts.df = expts.traj.df = ams.df = data.frame()
+for(i in 1:n.wt) {
   fname = paste(c("plant-mito-dynamics-main/mtgfp-rawtrajectories/mtGFP-", i, ".xml-stats.csv"), collapse="")
   tmp = read.csv(fname)
   tmp$elabel = i
@@ -176,10 +190,15 @@ for(i in 1:12) {
   tmp$elabel = i
   tmp$glabel = "WT"
   expts.traj.df = rbind(expts.traj.df, tmp)
+  fname = paste(c("plant-mito-dynamics-main/mtgfp-rawtrajectories/mtGFP-", i, ".xml-amlist.csv"), collapse="")
+  tmp = read.csv(fname)
+  tmp$elabel = i
+  tmp$glabel = "WT"
+  ams.df = rbind(ams.df, tmp)
 }
 
 # read in msh1 samples
-for(i in 1:12) {
+for(i in 1:n.msh1) {
   fname = paste(c("plant-mito-dynamics-main/msh1-rawtrajectories/MSH-", i, ".xml-stats.csv"), collapse="")
   tmp = read.csv(fname)
   tmp$elabel = i
@@ -191,13 +210,89 @@ for(i in 1:12) {
   tmp$elabel = i
   tmp$glabel = "msh1"
   expts.traj.df = rbind(expts.traj.df, tmp)
+  fname = paste(c("plant-mito-dynamics-main/msh1-rawtrajectories/MSH-", i, ".xml-amlist.csv"), collapse="")
+  tmp = read.csv(fname)
+  tmp$elabel = i
+  tmp$glabel = "msh1"
+  ams.df = rbind(ams.df, tmp)
 }
 
-# so revisiting this, when we compare experimental data to simulation WITH SAME DIMENSIONS as the experiment
-# we often fall on the front. but there's a subtlety about # of mitos vs # of trajectories to resolve
+# read in friendly samples
+for(i in 1:n.friendly) {
+  fname = paste(c("plant-mito-dynamics-main/friendly-rawtrajectories/Friendly-", i, ".xml-stats.csv"), collapse="")
+  tmp = read.csv(fname)
+  tmp$elabel = i
+  tmp$glabel = "friendly"
+  tmp$mean.halo.n = NULL
+  expts.df = rbind(expts.df, tmp)
+  fname = paste(c("plant-mito-dynamics-main/friendly-rawtrajectories/Friendly-", i, ".xml-rawtrajs.csv"), collapse="")
+  tmp = read.csv(fname)
+  tmp$elabel = i
+  tmp$glabel = "friendly"
+  expts.traj.df = rbind(expts.traj.df, tmp)
+  fname = paste(c("plant-mito-dynamics-main/friendly-rawtrajectories/Friendly-", i, ".xml-amlist.csv"), collapse="")
+  tmp = read.csv(fname)
+  tmp$elabel = i
+  tmp$glabel = "friendly"
+  ams.df = rbind(ams.df, tmp)
+}
+
+# visualise (previously read) simulations and experiments together
+# a nice example set of experiments
+nice.g = c("WT", "WT", "msh1", "friendly")
+nice.e = c(3, 5, 1, 1)
+
+# construct cell and adjacency matrix visualisations for each
+cell.vis = am.vis = list()
+for(i in 1:length(nice.g)) {
+  this.g = nice.g[i]
+  this.e = nice.e[i]
+  
+  sub = expts.traj.df[expts.traj.df$glabel==this.g & expts.traj.df$elabel == this.e & expts.traj.df$t<=10,]
+  sub10 = sub[sub$t==10,]
+  
+  cell.vis[[i]] = ggplot()  + #geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
+    geom_path(data=sub, aes(x=y,y=x,color=factor(traj)), alpha=0.5) + 
+    geom_point(data=sub10, aes(x=y,y=x), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
+    #theme(plot.background = element_rect(fill = "black")) + 
+    theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"),
+          panel.background = element_rect(fill = "black", color = "black")) + facet_wrap(~ elabel, scale="free")
+  
+  amg = graph_from_edgelist(as.matrix(ams.df[ams.df$glabel=="WT" & ams.df$elabel==i,2:3], directed=F))
+  
+  am.vis[[i]] = ggraph(amg, layout="nicely") + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
+    theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
+}
+
+# pull a collection together for visualisation
+g.all.1 = ggarrange(g1a[[4]], g1a[[10]], g1a[[8]], g1a[[5]], nrow=1)
+g.all.2 = ggarrange(plotlist=cell.vis, nrow=1)
+g.all.3 = ggarrange(g3[[4]], g3[[10]], g3[[8]], g3[[5]], nrow=1)
+g.all.4 = ggarrange(plotlist = am.vis, nrow=1)
+
+sf = 2
+png("all-demo-image.png", width=800*sf, height=400*sf, res=72*sf)
+ggarrange(g.all.1, g.all.2, g.all.3, g.all.4, nrow=2, ncol=2, heights=c(2,1))
+dev.off()
+
+########## actual optimality analysis
+
+# get mito counts from different experiments
+nset.df = data.frame()
+for(glab in c("WT", "msh1", "friendly")) {
+  for(elab in 1:max(expts.traj.df$elabel[expts.traj.df$glabel==glab])) {
+    sub = expts.traj.df[expts.traj.df$glabel==glab & expts.traj.df$elabel == elab,]
+    nset.df = rbind(nset.df, data.frame(glabel=glab, elabel=elab, n=nrow(sub[sub$t==1,])))
+  }
+}
+
+# timeframe for comparing simulation and experiment
+key.frame = 100
+
+# loop through experiments and compare to subset of simulations with comparable geometry
 complist = list()
-for(glab in c("WT", "msh1")) {
-  for(elab in 1:12) {
+for(glab in c("WT", "msh1", "friendly")) {
+  for(elab in 1:max(expts.traj.df$elabel[expts.traj.df$glabel==glab])) {
     df.sub = expts.traj.df[expts.traj.df$elabel==elab & 
                              expts.traj.df$glabel==glab,]
     data.mat = df.sub[,3:4]
@@ -205,105 +300,111 @@ for(glab in c("WT", "msh1")) {
     pca = princomp(data.mat)
     x.dim = max(pca$scores[,1])-min(pca$scores[,1])
     y.dim = max(pca$scores[,2])-min(pca$scores[,2])
-    n.dim = max(df.sub$traj)
+    n.dim = nset.df$n[nset.df$glabel==glab & nset.df$elabel==elab]
     
-  #  subbing = samples[((samples$Cx > x.dim-10 & samples$Cx < x.dim+10) & 
-  #                       (samples$Cy > y.dim-10 & samples$Cy < y.dim+10) & 
-  #                       (samples$Cn > n.dim-10 & samples$Cn < n.dim+10)),]
+    # get subset of simulations with comparable geometry
     subbing = stats.df[((stats.df$Cx > x.dim-10 & stats.df$Cx < x.dim+10) & 
-                      (stats.df$Cy > y.dim-10 & stats.df$Cy < y.dim+10) & 
-                      (stats.df$Cn > n.dim-10 & stats.df$Cn < n.dim+10)),]
+                          (stats.df$Cy > y.dim-10 & stats.df$Cy < y.dim+10) & 
+                          (stats.df$Cn > n.dim-10 & stats.df$Cn < n.dim+10) &
+                          (stats.df$V <= 2 & stats.df$kmito*stats.df$D < 0.2)),]
     
     titlestr = paste0(glab, "-", elab, ": ", round(x.dim), "x", round(y.dim), "x", n.dim, collapse=" ")
     complist[[length(complist)+1]] = ggplot() + 
       geom_point(data=subbing, aes(x=x, y=y), alpha = 0.2) + 
       geom_point(data = expts.df[expts.df$glabel == glab & expts.df$elabel == elab &
-                                   expts.df$frame==120,], 
+                                   expts.df$frame==key.frame,], 
                  aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), 
                  color="red") +
       theme_light() + theme(legend.position = "none") + 
       xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)") +
       ggtitle(titlestr)
-      
+    
     
   }
 }
 
-png("ind-trajs.png", width=1000*sf, height=800*sf, res=72*sf)
+# construct megaplot of each of these
+png(paste0("ind-trajs-", trajmult, ".png", collapse=""), width=1000*sf, height=1200*sf, res=72*sf)
 ggarrange(plotlist = complist)
 dev.off()
 
-# here we don't look very Pareto -- but of course this isn't conditioned on density
+######## pooled morphospace
+
+# decide on a Pareto summary stat
+samples$stat = samples$meanedges / samples$meanmin 
 ggplot() +
-  geom_point(data=samples, aes(x=x,y=y,color="color")) +
-  geom_point(data=expts.df[expts.df$frame==120,], 
-       aes(x = log(1/mean.min.dist), y=log(1/mean.degree), color=glabel)) 
- 
-           
-data.mat = expts.traj.df[expts.traj.df$elabel==12 & expts.traj.df$glabel=="WT",3:4]
-ggplot(data.mat, aes(x=x, y=y)) + geom_point()
-pca = princomp(data.mat)
-ggarrange(ggplot(as.data.frame(data.mat), aes(x=x, y=y)) + geom_point(),
+  geom_point(data=samples, aes(x=x,y=y,color=log(stat))) 
 
-ggplot(as.data.frame(pca$scores), aes(x=Comp.1, y=Comp.2)) + geom_point())
-ggplot(expts.traj.df, aes(x=x,y=y,color=factor(traj))) + geom_line() + 
-  facet_wrap(glabel~elabel) + theme(legend.position="none")
+# plot the pooled space with experimental data
+expts.df$glabel = factor(expts.df$glabel, levels=c("WT", "msh1", "friendly"))
+g.all.1 = ggplot() +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
+  scale_color_viridis() +
+  geom_point(data=expts.df[expts.df$frame==key.frame,], 
+             aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=3, shape=21) + 
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
+  theme_minimal()
 
-# plot summary of the experimental samples
-ggplot() + 
-  geom_path(data = expts.df[expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree), color=factor(glabel)), size=1)
+# plot zoomed-in version
+g.all.2 = ggplot() +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=10) +
+  scale_color_viridis() +
+  geom_point(data=expts.df[expts.df$frame==key.frame,], 
+             aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=2, shape=21) + 
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
+  theme_minimal() + xlim(-1.5,0) + ylim(-2.5, -0.75) + theme(legend.position = "none")
 
-# contruct piece-by-piece summary figure of experimental data overlaid on theoretical behaviours
-g.pset = ggplot() + geom_point(data=samples, aes(x=x, y=y, color=expt), alpha = 0.2) + 
-  geom_point() + theme_light() + theme(legend.position = "none") + #ylim(-4.5,2.5) + xlim(-1.5,4) +
-  xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
+# plot showing differences in Pareto stat (plus followup stats)
+sub.expts = expts.df[expts.df$frame==key.frame,]
+sub.expts$stat = (sub.expts$mean.degree/sub.expts$mean.min.dist) #log(sub.expts$mean.min.dist / sub.expts$mean.degree)
+g.all.3 = ggplot(sub.expts, aes(x=glabel, y=stat, fill=glabel, color=glabel)) + 
+  geom_boxplot(alpha=0.2, outliers=FALSE, width=0.2) +
+  geom_beeswarm() +
+  labs(x="Experiment", y="Pareto statistic") +
+  theme_minimal() + theme(legend.position = "none")
 
-g.pset.hull = g.pset + geom_point(data=mins, aes(x=x, y=y), color="red", size = 1) 
+kruskal.test(sub.expts$stat, sub.expts$glabel)
+summary(aov(stat ~ glabel, data=sub.expts))
+wilcox.test(sub.expts$stat[sub.expts$glabel=="WT"], sub.expts$stat[sub.expts$glabel=="msh1"])
+wilcox.test(sub.expts$stat[sub.expts$glabel=="WT"], sub.expts$stat[sub.expts$glabel=="friendly"])
+wilcox.test(sub.expts$stat[sub.expts$glabel=="friendly"], sub.expts$stat[sub.expts$glabel=="msh1"])
 
-g.pset.hull.exp1 = g.pset.hull + 
-  geom_point(data = expts.df[expts.df$glabel == "WT" & expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), color="black", size=1) 
+# megaplot of the morphospace picture
+ggarrange( g.all.1, ggarrange(g.all.2, g.all.3, nrow=2, labels=c("B", "C")), labels=c("A", ""), nrow=1, widths=c(1.5,1))
 
-g.pset.hull.exp2 = g.pset.hull.exp1 + 
-   geom_point(data = expts.df[expts.df$glabel == "msh1" & expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), color="orange", alpha = 0.2, size=1) 
+############# set-valued optimisation
+#### still a WIP
+summary_df <- samples %>%
+  group_by(group) %>%
+  summarize(
+    mean_value = mean(value, na.rm = TRUE),
+    sd_value = sd(value, na.rm = TRUE)
+  )
 
-myres = 2
-png("pset-expt-1.png", width=500*myres, height=300*myres, res=72*myres)
-print(g.pset)
-dev.off()
-png("pset-expt-2.png", width=500*myres, height=300*myres, res=72*myres)
-print(g.pset.hull)
-dev.off()
-png("pset-expt-3.png", width=500*myres, height=300*myres, res=72*myres)
-print(g.pset.hull.exp1)
-dev.off()
-png("pset-expt-4.png", width=500*myres, height=300*myres, res=72*myres)
-print(g.pset.hull.exp2)
-dev.off()
+########### "inference without data"
+# further inference, based on Pareto front and experimental observations
 
-#### pick a subset of samples with cell dimensions that correspond to a given experiment
+# get the mean wildtype behaviour
+mean.x = mean(expts.df$mean.min.dist[expts.df$glabel=="WT"])
+mean.y = mean(expts.df$mean.degree[expts.df$glabel=="WT"])
 
-# this is a reasonable range for experiment 3, for example
-xr = c(80, 120); yr = c(20, 40); nr = c(100, 160)
-#xr = c(50, 70); yr = c(20, 40); nr = c(60, 100)
+# subset simulations close to this
+# previously we built "mins", a dataframe of simulations on the Pareto front
+delta = 2
+inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
+samples$hist.ref = "All"
+mins$hist.ref = "Pareto"
+inv.set$hist.ref = "Proximal"
+hist.set = rbind(samples, mins, inv.set)
+new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
 
-subbing = samples[((samples$Cx > xr[1] & samples$Cx < xr[2]) & 
-                     (samples$Cy > yr[1] & samples$Cy < yr[2]) & 
-                     (samples$Cn > nr[1] & samples$Cn < nr[2])),]
-gs.pset = ggplot() + geom_point(data=subbing, aes(x=x, y=y, color=expt), alpha = 0.2) + 
-  geom_point() + theme_light() + theme(legend.position = "none") + #ylim(-4.5,2.5) + xlim(-1.5,4) +
-  xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
+# plot parameters in each class of closeness
+ggplot(new.hist.set, aes(x=value, y=after_stat(density), fill=hist.ref)) +
+  geom_histogram(position = "dodge", width=2) + 
+  facet_wrap(~name, scales = "free") +
+  theme_minimal()
 
-gs.pset.hull = gs.pset #+ geom_point(data=mins, aes(x=x, y=y), color="red", size = 1) 
-
-gs.pset.hull.exp1 = gs.pset.hull + 
-  geom_point(data = expts.df[expts.df$glabel == "WT" & expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), color="black", size=1) 
-
-gs.pset.hull.exp2 = gs.pset.hull.exp1 + 
-  geom_point(data = expts.df[expts.df$glabel == "msh1" & expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), color="orange", alpha = 0.2, size=1) 
-
-gs.pset.hull.exp2
-
-#### exploring determinants of Pareto front
+####### exploring parameter determinants of Pareto front
 baseplot = ggplot(data=samples, aes(x=x,y=y)) + scale_color_gradient(low = "blue", high = "red") + theme_light() #+ theme(legend.position = "none") 
 
 p.alpha = 0.2
@@ -329,40 +430,4 @@ dev.off()
 # - Higher kon/koff and V pushes us to the low-y Pareto bound
 # - Higher kmito generally pushes us to the Parteo front
 # - Density based sets up an x-gradient across the scatter
-
-###### not clear from here onwards
-
-posts = read.csv("outstatsinfer.csv")
-posts = posts[posts$score < 2.1*2.1,]
-
-gpostsabc = grid.arrange(ggplot(posts, aes(x=D)) + geom_histogram(),
-                         ggplot(posts, aes(x=kon)) + geom_histogram(),
-                         ggplot(posts, aes(x=koff)) + geom_histogram(),
-                         ggplot(posts, aes(x=V)) + geom_histogram(),
-                         ggplot(posts, aes(x=dmito)) + geom_histogram(),
-                         ggplot(posts, aes(x=kmito)) + geom_histogram(),
-                         ggplot(posts[posts$score < 10,], aes(x=score)) + geom_histogram(),
-                         ggplot(posts, aes(x=log(1./meanmin), y=log(1./meanedges), color=score)) + geom_point(),
-                         nrow=2)
-
-posts$x = 0; posts$y = 0; posts$type = "ABC"
-mins$score = 0; mins$type = "IWD"
-all.infer = rbind(posts, mins)
-
-gpostsall = grid.arrange(ggplot(all.infer, aes(x=D, fill=type)) + geom_histogram(position="dodge") + theme(legend.position="none"),
-                         ggplot(all.infer, aes(x=kon, fill=type)) + geom_histogram(position="dodge")+ theme(legend.position="none"),
-                         ggplot(all.infer, aes(x=koff, fill=type)) + geom_histogram(position="dodge")+ theme(legend.position="none"),
-                         ggplot(all.infer, aes(x=V, fill=type)) + geom_histogram(position="dodge")+ theme(legend.position="none"),
-                         ggplot(all.infer, aes(x=dmito, fill=type)) + geom_histogram(position="dodge")+ theme(legend.position="none"),
-                         ggplot(all.infer, aes(x=kmito, fill=type)) + geom_histogram(position="dodge")+ theme(legend.position="none"),
-                         nrow=2)
-
-
-png("inference2-expt.png", width=800*myres, height=300*myres, res=72*myres)
-grid.arrange(ghullexpt2, gpostsall, nrow=1)
-dev.off()
-
-gbexpt = gb + geom_path(data=expt.df[expt.df$frame>100,], aes(x = 1/mean.min.dist, y=1/mean.degree, color="a")) + scale_x_continuous(trans="log") + scale_y_continuous(trans="log")
-# XXX also use mean.halo.n
-grid.arrange(gac, gbexpt, nrow=1)
 

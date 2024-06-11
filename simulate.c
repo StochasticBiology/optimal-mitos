@@ -230,8 +230,9 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
   free(x); free(y); free(dx); free(dy); free(am); free(scale); free(active);
   if(output != 0)
     {
-      fclose(fp);						    
-      fclose(fp2);
+      // to fix -- file closure causes segfault in final case studies -- likely a memory leak?
+      //      fclose(fp);						    
+      // fclose(fp2);
     }
 }
 
@@ -241,7 +242,7 @@ int main(void)
   int i;
   FILE *fp;
   double *meanmin, *meanedges;
-  int ns = 100;
+  int ns = 10;
   int expt = 0;
   char str[200];
   
@@ -272,7 +273,7 @@ int main(void)
 	for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
 	  for(P.dmito = 1; P.dmito <= 4.01; P.dmito *= 2) {
 	    for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
-	      for(P.inter = 0; P.inter <= 10; P.inter += 5) {
+	      for(P.inter = -10; P.inter <= 10; P.inter += 5) {
 		// enforce maximum diffusion rate
 	        if(P.kmito * P.D <= 0.2)
 	 	  {
@@ -286,9 +287,9 @@ int main(void)
 			P.Cy = RND*100;
 			P.Cn = RND*200;
 		        AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
-			expt++;
   			fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
 		      }
+		    expt++;
 		    fclose(fp);
 		  }
 	      }
@@ -304,6 +305,7 @@ int main(void)
   P.Cx = 100; P.Cy = 30; P.Cn = 140;
   
   P.inter = 0;
+  expt = 0; ns = 10;
   // 0
   P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 0; P.kmito = 1;
   AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test0.csv"); expt++;
@@ -353,6 +355,7 @@ int main(void)
   fprintf(fp, "params,sample,meanmin,meanedges\n");
   for(i = 0; i < ns*expt; i++)
     fprintf(fp, "%i,%i,%f,%f\n", i/ns, i%ns, meanmin[i], meanedges[i]);
+  fclose(fp);
   
   return 0;
 }
