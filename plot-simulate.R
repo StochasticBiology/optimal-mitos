@@ -8,6 +8,8 @@ library(ggraph)
 # simulation code outputs trajectories to test[X].csv and adj mats to test[X].csv-am.csv, 
 # where X labels a particular example parameterisation
 
+# as of June 2024 there seems to be some issue with no data in the adj mat files. perhaps we haven't (re)run the trajectory analysis code?
+if(FALSE) {
 exptset = ""
 picset = 10
 g1 = g1a = g3 = list()
@@ -74,6 +76,7 @@ myres = 2
 png(paste(c("examples", exptset, ".png"), collapse=""), width=1000*myres, height=400*myres, res=72*myres)
 grid.arrange(ga, gb, nrow=1, widths=c(2,1))  
 dev.off()
+}
 
 ######## now onto parameter scan
 
@@ -85,6 +88,7 @@ gx = ggplot(stats.df, aes(x=log(1/meanmin), y=log(1/meanedges),color=expt)) +
   geom_point(alpha=0.5, size=0.25) + theme_classic() + theme(legend.position="none") +
   xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
 
+myres = 2
 png("fullset.png", width=400*myres, height=300*myres, res=72*myres)
 gx 
 dev.off()
@@ -193,8 +197,20 @@ for(i in 1:12) {
   expts.traj.df = rbind(expts.traj.df, tmp)
 }
 
+nset.df = data.frame()
+for(glab in c("WT", "msh1")) {
+  for(elab in 1:12) {
+    sub = expts.traj.df[expts.traj.df$glabel==glab & expts.traj.df$elabel == elab,]
+  nset.df = rbind(nset.df, data.frame(glabel=glab, elabel=elab, n=nrow(sub[sub$t==1,])))
+  }
+}
+
 # so revisiting this, when we compare experimental data to simulation WITH SAME DIMENSIONS as the experiment
 # we often fall on the front. but there's a subtlety about # of mitos vs # of trajectories to resolve
+
+# for comparing simulation and experiment
+key.frame = 100
+
 complist = list()
 for(glab in c("WT", "msh1")) {
   for(elab in 1:12) {
@@ -205,20 +221,26 @@ for(glab in c("WT", "msh1")) {
     pca = princomp(data.mat)
     x.dim = max(pca$scores[,1])-min(pca$scores[,1])
     y.dim = max(pca$scores[,2])-min(pca$scores[,2])
-    n.dim = max(df.sub$traj)
+    n.dim = nset.df$n[nset.df$glabel==glab & nset.df$elabel==elab]
+  #  if(trajmult == 0) {
+  #    n.dim = 100
+  #  } else {
+  #    n.dim = max(df.sub$traj*trajmult)
+  #  }
     
   #  subbing = samples[((samples$Cx > x.dim-10 & samples$Cx < x.dim+10) & 
   #                       (samples$Cy > y.dim-10 & samples$Cy < y.dim+10) & 
   #                       (samples$Cn > n.dim-10 & samples$Cn < n.dim+10)),]
     subbing = stats.df[((stats.df$Cx > x.dim-10 & stats.df$Cx < x.dim+10) & 
                       (stats.df$Cy > y.dim-10 & stats.df$Cy < y.dim+10) & 
-                      (stats.df$Cn > n.dim-10 & stats.df$Cn < n.dim+10)),]
+                      (stats.df$Cn > n.dim-10 & stats.df$Cn < n.dim+10) &
+                        (stats.df$V <= 2 & stats.df$kmito*stats.df$D < 0.2)),]
     
     titlestr = paste0(glab, "-", elab, ": ", round(x.dim), "x", round(y.dim), "x", n.dim, collapse=" ")
     complist[[length(complist)+1]] = ggplot() + 
       geom_point(data=subbing, aes(x=x, y=y), alpha = 0.2) + 
       geom_point(data = expts.df[expts.df$glabel == glab & expts.df$elabel == elab &
-                                   expts.df$frame==120,], 
+                                   expts.df$frame==key.frame,], 
                  aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), 
                  color="red") +
       theme_light() + theme(legend.position = "none") + 
@@ -229,17 +251,32 @@ for(glab in c("WT", "msh1")) {
   }
 }
 
-png("ind-trajs.png", width=1000*sf, height=800*sf, res=72*sf)
+png(paste0("ind-trajs-", trajmult, ".png", collapse=""), width=1000*sf, height=800*sf, res=72*sf)
 ggarrange(plotlist = complist)
 dev.off()
 
-# here we don't look very Pareto -- but of course this isn't conditioned on density
+samples$rho = samples$Cn/(samples$Cx*samples$Cy)
+
+# here we don't look very Pareto -- but of course this isn't conditioned on density (as of June 2024 we have reparameterised the sims though, so it does look Pareto)
 ggplot() +
-  geom_point(data=samples, aes(x=x,y=y,color="color")) +
-  geom_point(data=expts.df[expts.df$frame==120,], 
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.15 & samples$Cn < 150,], aes(x=x,y=y,color="color")) +
+  geom_point(data=expts.df[expts.df$frame==key.frame,], 
+             aes(x = log(1/mean.min.dist), y=log(1/mean.degree), color=glabel)) 
+
+# but enforcing physical constraints on number and speed puts us much more on the front
+ggplot() +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.15 & samples$Cn < 150,], aes(x=x,y=y,color="color")) +
+  geom_point(data=expts.df[expts.df$frame==key.frame,], 
        aes(x = log(1/mean.min.dist), y=log(1/mean.degree), color=glabel)) 
- 
-           
+
+sub.expts = expts.df[expts.df$frame==key.frame,]
+sub.expts$stat = sub.expts$mean.min.dist / sub.expts$mean.degree
+ggplot(sub.expts, aes(x=factor(glabel), y=stat)) + geom_boxplot() + geom_jitter()
+wilcox.test(sub.expts$stat[sub.expts$glabel=="WT"], sub.expts$stat[sub.expts$glabel=="msh1"])
+t.test(sub.expts$stat[sub.expts$glabel=="WT"], sub.expts$stat[sub.expts$glabel=="msh1"])
+
+# Jun 2024 -- not sure what this gains us -- exploratory vis? 
+if(FALSE) {
 data.mat = expts.traj.df[expts.traj.df$elabel==12 & expts.traj.df$glabel=="WT",3:4]
 ggplot(data.mat, aes(x=x, y=y)) + geom_point()
 pca = princomp(data.mat)
@@ -252,7 +289,10 @@ ggplot(expts.traj.df, aes(x=x,y=y,color=factor(traj))) + geom_line() +
 # plot summary of the experimental samples
 ggplot() + 
   geom_path(data = expts.df[expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree), color=factor(glabel)), size=1)
+}
 
+# just re-visualising the above, uncorrected version
+if(FALSE) {
 # contruct piece-by-piece summary figure of experimental data overlaid on theoretical behaviours
 g.pset = ggplot() + geom_point(data=samples, aes(x=x, y=y, color=expt), alpha = 0.2) + 
   geom_point() + theme_light() + theme(legend.position = "none") + #ylim(-4.5,2.5) + xlim(-1.5,4) +
@@ -279,7 +319,10 @@ dev.off()
 png("pset-expt-4.png", width=500*myres, height=300*myres, res=72*myres)
 print(g.pset.hull.exp2)
 dev.off()
+}
 
+# June 2024 -- subsetting the above
+if(FALSE) {
 #### pick a subset of samples with cell dimensions that correspond to a given experiment
 
 # this is a reasonable range for experiment 3, for example
@@ -302,7 +345,9 @@ gs.pset.hull.exp2 = gs.pset.hull.exp1 +
   geom_point(data = expts.df[expts.df$glabel == "msh1" & expts.df$frame>100,], aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), color="orange", alpha = 0.2, size=1) 
 
 gs.pset.hull.exp2
+}
 
+# June 2024 -- interesting part -- what determines Pareto structure
 #### exploring determinants of Pareto front
 baseplot = ggplot(data=samples, aes(x=x,y=y)) + scale_color_gradient(low = "blue", high = "red") + theme_light() #+ theme(legend.position = "none") 
 
@@ -330,6 +375,7 @@ dev.off()
 # - Higher kmito generally pushes us to the Parteo front
 # - Density based sets up an x-gradient across the scatter
 
+if(FALSE) {
 ###### not clear from here onwards
 
 posts = read.csv("outstatsinfer.csv")
@@ -365,4 +411,4 @@ dev.off()
 gbexpt = gb + geom_path(data=expt.df[expt.df$frame>100,], aes(x = 1/mean.min.dist, y=1/mean.degree, color="a")) + scale_x_continuous(trans="log") + scale_y_continuous(trans="log")
 # XXX also use mean.halo.n
 grid.arrange(gac, gbexpt, nrow=1)
-
+}

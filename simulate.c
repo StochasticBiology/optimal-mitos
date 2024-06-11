@@ -241,7 +241,7 @@ int main(void)
   int i;
   FILE *fp;
   double *meanmin, *meanedges;
-  int ns = 100;
+  int ns = 10;
   int expt = 0;
   char str[200];
   
