@@ -248,9 +248,13 @@ int main(void)
   meanmin = (double*)malloc(sizeof(double)*ns*100);
   meanedges = (double*)malloc(sizeof(double)*ns*100);
 
+  // units of the system: length 1 = 1 um, time 1 = 1 frame = 2s
+  
   // diffusion is 0.1um2 s-1, frame is 2s, so 0.2um2 frame-1
-
-  double scaled = 0.2, scalev = 0.5;
+  // from Chustecki et al. 2021, log (speed / um s-1) is between -4 and 0
+  // hence max speed around 1 um s-1 = 2 um frame-1; say average about 1 um frame -1 
+  
+  double scaled = 0.2, scalev = 1;
 
   // big parameter sweep of system
   
@@ -258,25 +262,29 @@ int main(void)
   fprintf(fp, "D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
   fclose(fp);
 
-  // for the samll set here we're looking at 13.5k simulations -- a couple of minutes
+  // for the small set here we're looking at 13.5k simulations -- a couple of minutes
   P.rhoon = 1; P.rhooff = 0; P.activep = 1;
+  // first, parameters with experimental bounds
   for(P.D = 0.05; P.D <= 0.21; P.D *= 2) {
-    for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
-      for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
-	for(P.V = 0.5; P.V <= 4.01; P.V *= 2) {
+    for(P.V = 0.1; P.V <= 2.6; P.V *= 2) {
+      // now parameters with no bounds or guessed ranges
+      for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
+	for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
 	  for(P.dmito = 1; P.dmito <= 4.01; P.dmito *= 2) {
 	    for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
 	      for(P.inter = 0; P.inter <= 10; P.inter += 5) {
-	        if(P.kmito * P.D <= 1.01)
+		// enforce maximum diffusion rate
+	        if(P.kmito * P.D <= 0.2)
 	 	  {
 		    printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
 		    sprintf(str, "expt-0.csv");
 	            fp= fopen("outstatsscan.csv", "a");
 		    for(i = 0; i < ns; i++)
 		      {
+			// dimensions and density also have physical bounds but we just scan over a range
 			P.Cx = RND*200;
 			P.Cy = RND*100;
-			P.Cn = RND*500;
+			P.Cn = RND*200;
 		        AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
 			expt++;
   			fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
