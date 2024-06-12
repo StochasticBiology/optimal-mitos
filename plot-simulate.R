@@ -5,6 +5,7 @@ library(ggraph)
 library(ggbeeswarm)
 library(dplyr)
 library(tidyr)
+library(ggforce)
 
 ######## first a collection of example parameterisations
 
@@ -374,12 +375,43 @@ ggarrange( g.all.1, ggarrange(g.all.2, g.all.3, nrow=2, labels=c("B", "C")), lab
 
 ############# set-valued optimisation
 #### still a WIP
-summary_df <- samples %>%
-  group_by(group) %>%
-  summarize(
-    mean_value = mean(value, na.rm = TRUE),
-    sd_value = sd(value, na.rm = TRUE)
-  )
+nsamp = nrow(stats.df[stats.df$expt == 1,])
+
+set.seed(1)
+eref = sample(1:max(stats.df$expt), 30)
+polys.df = ellipses.df = data.frame()
+for(e in eref) {
+  sub = stats.df[stats.df$expt == e,]
+  sub$x = log(1/sub$meanmin)
+  sub$y = log(1/sub$meanedges)
+  sub = sub[is.finite(sub$x) & is.finite(sub$y),]
+  hull = chull(sub$x, sub$y)
+  tmp = data.frame(e = e, xs = sub$x[hull], ys = sub$y[hull])
+  polys.df = rbind(polys.df, tmp)
+  ellipses.df = rbind(ellipses.df, data.frame(e = e,
+                                              x0=mean(sub$x), y0=mean(sub$y),
+                                              a=sd(sub$x)/sqrt(nsamp), b=sd(sub$y)/sqrt(nsamp)))
+}
+
+g.set.1 = ggplot() + 
+  geom_ellipse(data=ellipses.df, 
+               aes(x0 = x0, y0 = y0, a = a, b = b, angle=0,
+                   fill = factor(e)), alpha = 0.3, color="#FFFFFF") +
+  scale_fill_viridis_d() + scale_color_viridis_d() + 
+  theme_minimal() + theme(legend.position = "none") +
+   labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]")
+
+g.set.2 = ggplot() + 
+  geom_polygon(data=polys.df, aes(x=xs, y=ys, fill=factor(e)), alpha = 0.4) + 
+  geom_point(data=stats.df[stats.df$expt %in% eref & stats.df$meanedges > 0,], aes(x = log(1/meanmin), y=log(1/meanedges), color=factor(expt))) +
+  theme_minimal() + theme(legend.position = "none") +
+  scale_fill_viridis_d() + scale_color_viridis_d() +
+     labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]")
+
+sf = 2
+png("set-valued.png", width=600*sf, height=250*sf, res=72*sf)
+ggarrange(g.set.1, g.set.2)
+dev.off()
 
 ########### "inference without data"
 # further inference, based on Pareto front and experimental observations
