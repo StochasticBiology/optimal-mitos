@@ -438,6 +438,7 @@ for(glab in c("WT", "msh1", "friendly")) {
 plot.dists = rbind(null.dists.df, expt.dists.df)
 
 plot.dists$label = factor(plot.dists$label, levels=c("WT", "msh1", "friendly", "All"))
+plot.dists = plot.dists[plot.dists$d > 0,]
 g.dist.hyp = ggplot(plot.dists, aes(x=label, y=log(d), fill=label, color=label)) + 
   geom_boxplot(alpha=0.3) + 
   geom_beeswarm() + theme_minimal() + theme(legend.position="none") +
@@ -515,11 +516,13 @@ mean.y = mean(expts.df$mean.degree[expts.df$glabel=="WT"])
 
 # subset simulations close to this
 # previously we built "mins", a dataframe of simulations on the Pareto front
-delta = 2
+delta = 4
 inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
 samples$hist.ref = "All"
 mins$hist.ref = "Pareto"
 inv.set$hist.ref = "Proximal"
+mins$stat = 0
+inv.set$stat = 0
 ### columns bug here XXX
 hist.set = rbind(samples, mins, inv.set)
 new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
