@@ -88,9 +88,14 @@ dev.off()
 ######## now onto parameter scan
 
 # pull summary statistics for large parameter scan from the full simulation code
-stats.df = read.csv(paste(c("outstatsscan", exptset, ".csv"), collapse=""))
+stats.df = data.frame()
+for(i in 1:5) {
+  tmp.df = read.csv(paste0(c("outstatsscan-", i, ".csv"), collapse=""))
+  stats.df = rbind(stats.df, tmp.df)
+}
 
 # plot of theoretical behaviours
+if(FALSE) {
 gx = ggplot(stats.df, aes(x=log(1/meanmin), y=log(1/meanedges),color=expt)) + 
   geom_point(alpha=0.5, size=0.25) + theme_classic() + theme(legend.position="none") +
   xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
@@ -99,6 +104,7 @@ myres = 2
 png("fullset.png", width=400*myres, height=300*myres, res=72*myres)
 gx 
 dev.off()
+}
 
 # downsample for plotting convenience
 stats.df$x = log(1/stats.df$meanmin)
@@ -325,7 +331,7 @@ for(glab in c("WT", "msh1", "friendly")) {
 }
 
 # construct megaplot of each of these
-png(paste0("ind-trajs-", trajmult, ".png", collapse=""), width=1000*sf, height=1200*sf, res=72*sf)
+png(paste0("ind-trajs.png", collapse=""), width=1000*sf, height=1200*sf, res=72*sf)
 ggarrange(plotlist = complist)
 dev.off()
 
@@ -352,14 +358,14 @@ g.all.2 = ggplot() +
   scale_color_viridis() +
   geom_point(data=expts.df[expts.df$frame==key.frame,], 
              aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=2, shape=21) + 
-  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness\n[log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
   theme_minimal() + xlim(-1.5,0) + ylim(-2.5, -0.75) + theme(legend.position = "none")
 
 # plot showing differences in Pareto stat (plus followup stats)
 sub.expts = expts.df[expts.df$frame==key.frame,]
 sub.expts$stat = (sub.expts$mean.degree/sub.expts$mean.min.dist) #log(sub.expts$mean.min.dist / sub.expts$mean.degree)
 g.all.3 = ggplot(sub.expts, aes(x=glabel, y=stat, fill=glabel, color=glabel)) + 
-  geom_boxplot(alpha=0.2, outliers=FALSE, width=0.2) +
+  geom_boxplot(alpha=0.2, outliers=FALSE, width=0.5) +
   geom_beeswarm() +
   labs(x="Experiment", y="Pareto statistic") +
   theme_minimal() + theme(legend.position = "none")
@@ -372,6 +378,93 @@ wilcox.test(sub.expts$stat[sub.expts$glabel=="friendly"], sub.expts$stat[sub.exp
 
 # megaplot of the morphospace picture
 ggarrange( g.all.1, ggarrange(g.all.2, g.all.3, nrow=2, labels=c("B", "C")), labels=c("A", ""), nrow=1, widths=c(1.5,1))
+
+# for talks
+g.all.1.a = ggplot() +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
+  scale_color_viridis() +
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
+  theme_minimal()
+
+g.all.1.a1 = ggplot() +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
+  scale_color_viridis() +
+  geom_point(data=mins, aes(x=x,y=y), color="red") +
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
+  theme_minimal()
+
+
+g.all.1.b = ggplot() +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
+  scale_color_viridis() +
+geom_point(data=expts.df[expts.df$glabel=="WT" & expts.df$frame==key.frame,], 
+           aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=3, shape=21) + 
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
+  theme_minimal()
+  
+png("pareto-talks-1.png", width=640*sf, height=360*sf, res=72*sf)
+print(g.all.1.a)
+dev.off()
+png("pareto-talks-1a.png", width=640*sf, height=360*sf, res=72*sf)
+print(g.all.1.a1)
+dev.off()
+png("pareto-talks-2.png", width=640*sf, height=360*sf, res=72*sf)
+print(g.all.1.b)
+dev.off()
+png("pareto-talks-3.png", width=640*sf, height=360*sf, res=72*sf)
+print(g.all.1)
+dev.off()
+
+######### closeness to front
+
+null.dists.df = expt.dists.df = data.frame()
+sub = samples[1:100,]
+for(i in 1:nrow(sub)) {
+  this.x = log(1/sub$meanmin[i])
+  this.y = log(1/sub$meanedges[i])
+  dists = (mins$x-this.x)**2 + (mins$y-this.y)**2
+  null.dists.df = rbind(null.dists.df, data.frame(label="All", d=min(dists)))
+}
+for(glab in c("WT", "msh1", "friendly")) {
+  sub = sub.expts[sub.expts$glabel==glab,]
+  for(i in 1:nrow(sub)) {
+    this.x = log(1/sub$mean.min.dist[i])
+    this.y = log(1/sub$mean.degree[i])
+    dists = (mins$x-this.x)**2 + (mins$y-this.y)**2
+    expt.dists.df = rbind(expt.dists.df, data.frame(label=glab, d=min(dists)))
+  }
+}
+
+plot.dists = rbind(null.dists.df, expt.dists.df)
+
+plot.dists$label = factor(plot.dists$label, levels=c("WT", "msh1", "friendly", "All"))
+g.dist.hyp = ggplot(plot.dists, aes(x=label, y=log(d), fill=label, color=label)) + 
+  geom_boxplot(alpha=0.3) + 
+  geom_beeswarm() + theme_minimal() + theme(legend.position="none") +
+  labs(x = "Subset", y="log (distance\nto Pareto front)")
+
+sf = 2
+png("multi-opt.png", width=800*sf, height=400*sf, res=72*sf)
+ggarrange( g.all.1, 
+           ggarrange(g.all.2, 
+                     ggarrange(g.dist.hyp, g.all.3,
+                               nrow=1, widths=c(1.5,1), labels=c("C", "D")), 
+                     nrow=2, labels=c("B", "")), 
+           nrow = 1, labels=c("A", ""), widths=c(1.5,1))
+dev.off()
+
+median(plot.dists$d[plot.dists$label!="All"])
+max(plot.dists$d[plot.dists$label=="All"])
+
+median(plot.dists$d[plot.dists$label=="All"])/median(plot.dists$d[plot.dists$label!="All"])
+wilcox.test(plot.dists$d[plot.dists$label=="All"], plot.dists$d[plot.dists$label!="All"],)
+
+wilcox.test(plot.dists$d[plot.dists$label=="All"], plot.dists$d[plot.dists$label=="WT"],)
+wilcox.test(plot.dists$d[plot.dists$label=="All"], plot.dists$d[plot.dists$label=="msh1"],)
+wilcox.test(plot.dists$d[plot.dists$label=="All"], plot.dists$d[plot.dists$label=="friendly"],)
+wilcox.test(plot.dists$d[plot.dists$label=="msh1"], plot.dists$d[plot.dists$label=="WT"],)
+wilcox.test(plot.dists$d[plot.dists$label=="friendly"], plot.dists$d[plot.dists$label=="WT"],)
+wilcox.test(plot.dists$d[plot.dists$label=="msh1"], plot.dists$d[plot.dists$label=="friendly"],)
 
 ############# set-valued optimisation
 #### still a WIP
@@ -427,6 +520,7 @@ inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < d
 samples$hist.ref = "All"
 mins$hist.ref = "Pareto"
 inv.set$hist.ref = "Proximal"
+### columns bug here XXX
 hist.set = rbind(samples, mins, inv.set)
 new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
 

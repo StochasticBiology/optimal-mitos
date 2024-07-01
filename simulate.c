@@ -236,7 +236,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
     }
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
   Params P;
   int i;
@@ -245,6 +245,19 @@ int main(void)
   int ns = 10;
   int expt = 0;
   char str[200];
+  int interdir;
+  double interscale;
+  char fname[50];
+  int seed;
+  
+  if(argc != 2)
+    {
+      printf("Need random seed!\n");
+      exit(0);
+    }
+  seed = atoi(argv[1]);
+
+  srand48(seed);
   
   meanmin = (double*)malloc(sizeof(double)*ns*100);
   meanedges = (double*)malloc(sizeof(double)*ns*100);
@@ -258,46 +271,54 @@ int main(void)
   double scaled = 0.2, scalev = 1;
 
   // big parameter sweep of system
-  
-  fp= fopen("outstatsscan.csv", "w");
-  fprintf(fp, "D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
+
+  sprintf(fname, "outstatsscan-%i.csv", seed);
+  fp= fopen(fname, "w");
+  fprintf(fp, "seed,D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
   fclose(fp);
 
   // for the small set here we're looking at 13.5k simulations -- a couple of minutes
   P.rhoon = 1; P.rhooff = 0; P.activep = 1;
   // first, parameters with experimental bounds
-  for(P.D = 0.05; P.D <= 0.21; P.D *= 2) {
-    for(P.V = 0.1; P.V <= 2.6; P.V *= 2) {
+  for(P.D = 0.0; P.D <= 0.21; P.D *= 2) {
+    for(P.V = 0.; P.V <= 2.6; P.V *= 2) {
       // now parameters with no bounds or guessed ranges
       for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
 	for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
-	  for(P.dmito = 1; P.dmito <= 4.01; P.dmito *= 2) {
+	  for(P.dmito = 1; P.dmito <= 16.01; P.dmito *= 2) {
 	    for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
-	      for(P.inter = -10; P.inter <= 10; P.inter += 5) {
-		// enforce maximum diffusion rate
-	        if(P.kmito * P.D <= 0.2)
-	 	  {
-		    printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
-		    sprintf(str, "expt-0.csv");
-	            fp= fopen("outstatsscan.csv", "a");
-		    for(i = 0; i < ns; i++)
-		      {
-			// dimensions and density also have physical bounds but we just scan over a range
-			P.Cx = RND*200;
-			P.Cy = RND*100;
-			P.Cn = RND*200;
-		        AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
-  			fprintf(fp, "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
-		      }
-		    expt++;
-		    fclose(fp);
-		  }
+	      for(interscale = 0; interscale <= 21; interscale *= 2) {
+		for(interdir = -1; interdir <= 1; interdir += 2) {
+		  if(interscale == 0) interdir = 1;
+		  P.inter = interscale*interdir;
+		  // enforce maximum diffusion rate
+		  if(P.kmito * P.D <= 0.2)
+		    {
+		      printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
+		      sprintf(str, "expt-0.csv");
+		      fp= fopen(fname, "a");
+		      for(i = 0; i < ns; i++)
+			{
+			  // dimensions and density also have physical bounds but we just scan over a range
+			  P.Cx = RND*200;
+			  P.Cy = RND*100;
+			  P.Cn = RND*200;
+			  AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
+			  fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
+			}
+		      expt++;
+		      fclose(fp);
+		    }
+		}
+		if(interscale == 0) interscale = 2.5;
 	      }
 	    }
 	  }
 	}
       }
+      if(P.V == 0) P.V = 0.1;
     }
+    if(P.D == 0) P.D = 0.025;
   }
 
   // here we go through a collection of specifically-chosen parameterisations, simulating behaviour and outputting trajectories to files
@@ -350,11 +371,12 @@ int main(void)
   // 11
   P.D = scaled*1; P.kon = 0.1; P.koff = 0.1; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*5; P.dmito = 0; P.kmito = 1;
   AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test11.csv"); expt++;
- 
-  fp= fopen("outstats.csv", "w");
-  fprintf(fp, "params,sample,meanmin,meanedges\n");
+
+  sprintf(fname, "outstats-%i.csv", seed);
+  fp= fopen(fname, "w");
+  fprintf(fp, "seed,params,sample,meanmin,meanedges\n");
   for(i = 0; i < ns*expt; i++)
-    fprintf(fp, "%i,%i,%f,%f\n", i/ns, i%ns, meanmin[i], meanedges[i]);
+    fprintf(fp, "%i,%i,%i,%f,%f\n", seed, i/ns, i%ns, meanmin[i], meanedges[i]);
   fclose(fp);
   
   return 0;
