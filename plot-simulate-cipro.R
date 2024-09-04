@@ -266,13 +266,16 @@ for(expt in expt.set) {
 
 # visualise (previously read) simulations and experiments together
 # a nice example set of experiments
-#nice.g = c("WT", "WT", "msh1", "friendly")
-#nice.e = c(3, 5, 1, 1)
-nice.g = unique(expts.df$glabel)
-nice.e = rep(1, length(nice.g))
+nice.g = c("WT", "WT", "msh1", "friendly")
+nice.e = c(3, 5, 2, 1)
+nice.g = c("WT", "WT", "msh1", "msh1-cipro")
+nice.e = c(3, 5, 2, 1)
+#nice.g = unique(expts.df$glabel)
+#nice.e = rep(1, length(nice.g))
 
 # construct cell and adjacency matrix visualisations for each
 cell.vis = am.vis = list()
+md = 0.475
 for(i in 1:length(nice.g)) {
   this.g = nice.g[i]
   this.e = nice.e[i]
@@ -284,8 +287,8 @@ for(i in 1:length(nice.g)) {
     geom_path(data=sub, aes(x=y,y=x,color=factor(traj)), alpha=0.5) + 
     geom_point(data=sub10, aes(x=y,y=x), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
     #theme(plot.background = element_rect(fill = "black")) + 
-    theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"),
-          panel.background = element_rect(fill = "black", color = "black")) + facet_wrap(~ elabel, scale="free")
+    theme(plot.margin = unit(c(md,md,md,md), "cm"),
+          panel.background = element_rect(fill = "black", color = "black")) # + facet_wrap(~ elabel, scale="free")
   
   amg = graph_from_edgelist(as.matrix(ams.df[ams.df$glabel=="WT" & ams.df$elabel==i,2:3], directed=F))
   
@@ -294,14 +297,16 @@ for(i in 1:length(nice.g)) {
 }
 
 # pull a collection together for visualisation
-g.all.1 = ggarrange(g1a[[4]], g1a[[10]], g1a[[8]], g1a[[5]], nrow=1)
-g.all.2 = ggarrange(plotlist=cell.vis, nrow=1)
+g.all.1 = ggarrange(g1a[[4]], g1a[[10]], g1a[[8]], g1a[[5]], nrow=1, labels=c("A", "B", "C", "D"))
+g.all.2 = ggarrange(plotlist=cell.vis, nrow=1, labels=c("E", "F", "G", "H"))
 g.all.3 = ggarrange(g3[[4]], g3[[10]], g3[[8]], g3[[5]], nrow=1)
 g.all.4 = ggarrange(plotlist = am.vis, nrow=1)
 
+ggarrange(g1a[[5]], cell.vis[[1]], g3[[5]], am.vis[[1]], nrow=2, ncol=2 )
+
 sf = 2
 mypng(protocol, "all-demo-image.png", width=800*sf, height=400*sf, res=72*sf)
-ggarrange(g.all.1, g.all.2, g.all.3, g.all.4, nrow=2, ncol=2, heights=c(2,1))
+ggarrange(g.all.1, g.all.2, g.all.3, g.all.4, nrow=2, ncol=2, widths=c(1,1.1), heights=c(2,1))
 dev.off()
 
 ########## actual optimality analysis
@@ -635,3 +640,22 @@ dev.off()
 # - Higher kmito generally pushes us to the Parteo front
 # - Density based sets up an x-gradient across the scatter
 
+#### let's look at speeds
+df_diff <- expts.traj.df %>%
+  arrange(elabel, glabel, traj, t) %>%  # Ensure data is sorted by label and t
+  group_by(elabel, glabel, traj) %>%    # Group by label
+  mutate(
+    x_diff = x - lag(x),  # Calculate difference in x
+    y_diff = y - lag(y),  # Calculate difference in y
+    t_diff = t - lag(t)   # Calculate difference in t
+  ) %>%
+  filter(t_diff == 1) %>%  # Keep only rows where t is contiguous
+  select(elabel, glabel, traj, x_diff, y_diff, t_diff)  # Select relevant columns
+
+df_diff$speed = sqrt(df_diff$x_diff**2 + df_diff$y_diff**2)
+df_diff$glabel = factor(df_diff$glabel, levels = unique(expts.df$glabel))
+mypng(protocol, "speed-distn.png", width=400*sf, height=300*sf, res=72*sf)
+ggplot(df_diff, aes(x=glabel, y=log10(speed), fill=glabel)) + 
+  geom_boxplot() +
+  scale_fill_manual(values=col.set) + theme_light()
+dev.off()
