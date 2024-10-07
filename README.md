@@ -4,4 +4,4 @@
 
 `plot-simulate.R` plots the output from these simulations and also a comparison with bio data. For this comparison with experiments, pull https://github.com/StochasticBiology/plant-mito-dynamics into `./plant-mito-dynamics-main/` and run `wrapper.sh` from there. This analyses the trajectories in that repo and summarises the adjacency matrices and coordinates for inclusion here.
 
-`generate-video.R` produces a visualisation of the social network construction process.
+`generate-video.R` produces a visualisation of the social network construction process. `more-vid.sh` is an example of merging this with the original source data to give a visual overview of the pipeline.
