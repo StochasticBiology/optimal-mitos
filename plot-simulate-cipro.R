@@ -268,8 +268,8 @@ for(expt in expt.set) {
 # a nice example set of experiments
 nice.g = c("WT", "WT", "msh1", "friendly")
 nice.e = c(3, 5, 2, 1)
-nice.g = c("WT", "WT", "msh1", "msh1-cipro")
-nice.e = c(3, 5, 2, 1)
+nice.g = c("WT", "msh1", "friendly", "msh1-cipro")
+nice.e = c(5, 2, 4, 4)
 #nice.g = unique(expts.df$glabel)
 #nice.e = rep(1, length(nice.g))
 
@@ -280,8 +280,9 @@ for(i in 1:length(nice.g)) {
   this.g = nice.g[i]
   this.e = nice.e[i]
   
-  sub = expts.traj.df[expts.traj.df$glabel==this.g & expts.traj.df$elabel == this.e & expts.traj.df$t<=10,]
-  sub10 = sub[sub$t==10,]
+  tsamp = 10
+  sub = expts.traj.df[expts.traj.df$glabel==this.g & expts.traj.df$elabel == this.e & expts.traj.df$t > tsamp-10 & expts.traj.df$t <= tsamp,]
+  sub10 = sub[sub$t==tsamp,]
   
   cell.vis[[i]] = ggplot()  + #geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
     geom_path(data=sub, aes(x=y,y=x,color=factor(traj)), alpha=0.5) + 
@@ -290,7 +291,9 @@ for(i in 1:length(nice.g)) {
     theme(plot.margin = unit(c(md,md,md,md), "cm"),
           panel.background = element_rect(fill = "black", color = "black")) # + facet_wrap(~ elabel, scale="free")
   
-  amg = graph_from_edgelist(as.matrix(ams.df[ams.df$glabel=="WT" & ams.df$elabel==i,2:3], directed=F))
+  amg = graph_from_edgelist(as.matrix(
+    ams.df[ams.df$glabel==this.g & ams.df$elabel==this.e &
+             ams.df$t1 < 250 & ams.df$t2 < 250,2:3], directed=F))
   
   am.vis[[i]] = ggraph(amg, layout="nicely") + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
     theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
@@ -302,11 +305,12 @@ g.all.2 = ggarrange(plotlist=cell.vis, nrow=1, labels=c("E", "F", "G", "H"))
 g.all.3 = ggarrange(g3[[4]], g3[[10]], g3[[8]], g3[[5]], nrow=1)
 g.all.4 = ggarrange(plotlist = am.vis, nrow=1)
 
+
 ggarrange(g1a[[5]], cell.vis[[1]], g3[[5]], am.vis[[1]], nrow=2, ncol=2 )
 
 sf = 2
-mypng(protocol, "all-demo-image.png", width=800*sf, height=400*sf, res=72*sf)
-ggarrange(g.all.1, g.all.2, g.all.3, g.all.4, nrow=2, ncol=2, widths=c(1,1.1), heights=c(2,1))
+mypng(protocol, "all-demo-image.png", width=1200*sf, height=450*sf, res=72*sf)
+ggarrange(g.all.1, g.all.2, g.all.3, g.all.4, nrow=2, ncol=2, widths=c(1,1.1), heights=c(1.5,1))
 dev.off()
 
 ########## actual optimality analysis
@@ -605,9 +609,10 @@ new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito"
 
 # plot parameters in each class of closeness
 sf = 2
-mypng(protocol, "inference.png", width=800*sf, height=200*sf, res=72*sf)
+mypng(protocol, "inference.png", width=600*sf, height=200*sf, res=72*sf)
 ggplot(new.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
   geom_bar(position = "dodge", alpha=0.8) + 
+  scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
   facet_wrap(~name, scales = "free", nrow = 2) +
   labs(x = "", y="", fill = "Subset of\nmorphospace") +
   theme_minimal()
@@ -655,7 +660,252 @@ df_diff <- expts.traj.df %>%
 df_diff$speed = sqrt(df_diff$x_diff**2 + df_diff$y_diff**2)
 df_diff$glabel = factor(df_diff$glabel, levels = unique(expts.df$glabel))
 mypng(protocol, "speed-distn.png", width=400*sf, height=300*sf, res=72*sf)
-ggplot(df_diff, aes(x=glabel, y=log10(speed), fill=glabel)) + 
-  geom_boxplot() +
-  scale_fill_manual(values=col.set) + theme_light()
+ggplot(df_diff[df_diff$speed > 0,], aes(x=glabel, y=log10(speed), fill=glabel)) + 
+  geom_violin() +
+  geom_boxplot(width = 0.5) +
+  scale_fill_manual(values=col.set) + 
+  labs(x = "Experiment", y = "log(Speed / um s-1)", fill="Experiment") +
+         theme_light()
 dev.off()
+
+### trajectory counts
+traj.df = expts.traj.df %>%
+  group_by(glabel, elabel) %>%
+  summarise(unique_traj_count = n_distinct(traj))
+traj.df$glabel = factor(traj.df$glabel, levels = unique(expts.traj.df$glabel))
+ggplot(traj.df, aes(x=glabel, y=unique_traj_count)) + geom_violin() + geom_beeswarm()
+
+traj.df.len = expts.traj.df %>%
+  group_by(glabel, elabel, traj) %>%
+  summarise(traj_count = n()) %>%
+  group_by(glabel, elabel) %>%
+  summarise(mean_traj_count = mean(traj_count))
+
+traj.df.len$glabel = factor(traj.df.len$glabel, levels = unique(expts.traj.df$glabel))
+ggplot(traj.df.len, aes(x=glabel, y=mean_traj_count) ) + geom_violin() + geom_beeswarm()
+
+#### DIFFERENT FRAMES
+expts.1 = expts.df[expts.df$frame==1,]
+expts.100 = expts.df[expts.df$frame==100,]
+
+if(nrow(expts.1)==nrow(expts.100)) {
+  expts.100$n1 = expts.1$num.vertices
+} else {
+  warning("Final frame - initial frame mismatch")
+}
+
+expts.100$glabel = factor(expts.100$glabel, levels = unique(expts.traj.df$glabel))
+
+
+library(sp)
+
+# Function to calculate the area of the convex hull
+calculate_convex_hull_area <- function(data) {
+  # Get the convex hull points (indexes)
+  hull_indices <- chull(data$x, data$y)
+  
+  # Extract the coordinates of the convex hull points
+  hull_points <- data[hull_indices, ]
+  
+  # Create a Polygon object from the hull points
+  poly <- Polygon(as.matrix(hull_points[, c("x", "y")]))
+  
+  # Return the area of the polygon
+  return(poly@area)
+}
+
+# Group the dataframe by the combination of label1 and label2
+cell.areas <- expts.traj.df %>%
+  group_by(elabel, glabel) %>%
+  summarise(area = calculate_convex_hull_area(cur_data())) %>%
+  ungroup()
+cell.areas$glabel = factor(cell.areas$glabel, levels = unique(expts.traj.df$glabel))
+ggplot(cell.areas, aes(x=glabel, y=area)) + geom_violin() + geom_boxplot()
+
+if(FALSE) {
+  
+expts.traj.df.sub = expts.traj.df[expts.traj.df$traj < 10,]
+# intractable on mac
+traj.areas <- expts.traj.df.sub %>%
+  group_by(elabel, glabel, traj) %>%
+  summarise(area = calculate_convex_hull_area(cur_data())) %>%
+  ungroup()
+
+traj.areas$glabel = factor(traj.areas$glabel, levels = unique(expts.traj.df$glabel))
+ggplot(traj.areas, aes(x=glabel, y=log(area+1))) + geom_violin() + geom_beeswarm()
+}
+
+
+
+# plot a couple of small ones
+if(FALSE) {
+sub.small = expts.traj.df[expts.traj.df$glabel=="WT-2" & expts.traj.df$elabel <= 2,]
+ggplot(sub.small, aes(x=x,y=y)) + geom_point() + facet_wrap(~elabel, scales = "free")
+ggarrange(
+  ggplot(expts.100, aes(x=glabel, y=num.vertices)) + geom_violin() + geom_beeswarm() +ggtitle("N vertex"),
+  ggplot(expts.100, aes(x=glabel, y=singletons/num.vertices)) + geom_violin() + geom_beeswarm() +ggtitle("Singleton proportion"),
+  ggplot(expts.100, aes(x=glabel, y=num.edges)) + geom_violin() + geom_beeswarm() +ggtitle("N edges"),
+  ggplot(expts.100, aes(x=glabel, y=betweenness)) + geom_violin() + geom_beeswarm() + ggtitle("Betweenness"),
+  ggplot(expts.100, aes(x=glabel, y=mean.min.dist)) + geom_violin() + geom_beeswarm() + ggtitle("Mean min dist"),
+   ggplot(expts.100, aes(x=glabel, y=mean.degree)) + geom_violin() + geom_beeswarm() + ggtitle("Mean degree"),
+   ggplot(expts.100, aes(x=glabel, y=sd.degree)) + geom_violin() + geom_beeswarm() + ggtitle("SD degree"),
+  ggplot(expts.100, aes(x=glabel, y=cc.num)) + geom_violin() + geom_beeswarm() + ggtitle("CC num"),
+  ggplot(traj.df.len, aes(x=glabel, y=mean_traj_count) ) + geom_violin() + geom_beeswarm() + ggtitle("Traj length"),
+  ggplot(cell.areas, aes(x=glabel, y=area)) + geom_violin() + geom_beeswarm() + ggtitle("Hull areas"),
+  nrow=2, ncol=5
+)
+
+}
+
+######## taking this section up Sep 2026
+
+# attempt some normalisations by cell size
+expts.100.size = expts.100
+expts.100.size$area = 0
+for(i in 1:nrow(expts.100)) {
+  ref = which(cell.areas$elabel == expts.100$elabel[i] & cell.areas$glabel == expts.100$glabel[i])
+  expts.100.size$area[i] = cell.areas$area[ref]
+}
+
+#### CHOICE OF DENSITIES
+expts.100.size$density = expts.100.size$num.vertices/expts.100.size$area
+#expts.100.size$density = expts.100.size$n1/expts.100.size$area
+
+ggplot(expts.100.size, aes(x=glabel, y=mean.min.dist/sqrt(area))) + geom_boxplot()
+ggplot(expts.100.size, aes(x=glabel, y=mean.degree)) + geom_boxplot()
+
+ggplot(expts.100.size, aes(x=glabel, y=mean.min.dist/density)) + geom_boxplot()
+ggplot(expts.100.size, aes(x=glabel, y=mean.degree/density)) + geom_boxplot()
+
+g.density = ggplot(expts.100.size, aes(x=glabel, y=density, fill=glabel)) + 
+  geom_boxplot(color="black", alpha=0.7, outliers=FALSE, width=0.5) +
+  geom_beeswarm(size=2,stroke=0.2, shape=21) +
+  scale_color_manual(values=col.set.plus) +
+  scale_fill_manual(values=col.set.plus) + 
+  theme_minimal() + theme(legend.position="none", axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Subset", y="Density /\nmitos per cell area") 
+
+  
+g.density
+
+sf = 2
+mypng(protocol, "multi-opt-cipro-density.png", width=800*sf, height=400*sf, res=72*sf)
+ggarrange( g.all.1.alt, 
+           ggarrange(g.all.2.alt, g.density,
+                    g.dist.hyp, g.all.3.stats,
+                               nrow=2, ncol= 2, 
+                    labels=c("B", "C", "D", "E")), 
+           nrow = 1, labels=c("A", ""), widths=c(1,1))
+dev.off()
+
+#XXXX THIS PLOT
+
+ggplot(expts.100.size, aes(x=glabel, y=mean.degree)) + geom_violin() + geom_boxplot() 
+
+expts.100.size$traj.len = traj.df.len$mean_traj_count
+
+# these at least induce a shift in the right direction (although the results aren't in the right direction yet)
+ggplot(expts.100.size, aes(x=glabel, y=density)) + geom_violin() + geom_boxplot()
+ggplot(expts.100.size, aes(x=glabel, y=mean.degree/density)) + geom_violin() + geom_boxplot()
+ggplot(expts.100.size, aes(x=glabel, y=mean.degree/traj.len)) + geom_boxplot()
+
+ggarrange(
+  ggplot(expts.100.size, aes(x=num.vertices, y=mean.degree, color=glabel)) + geom_point(),
+  ggplot(expts.100.size, aes(x=num.vertices, y=1/mean.min.dist, color=glabel)) + geom_point(),
+ggplot(expts.100.size, aes(x=density, y=mean.degree, color=glabel)) + geom_point(),
+ggplot(expts.100.size, aes(x=density, y=1/mean.min.dist, color=glabel)) + geom_point()
+)
+
+ggarrange(
+  ggarrange(
+    ggplot(expts.100.size, aes(x=density, y=mean.degree, color=glabel)) + geom_point(),
+    ggplot(expts.100.size, aes(x=density, y=(1/mean.min.dist)**2, color=glabel)) + geom_point(),
+    nrow=1
+  ),
+  ggarrange(
+    ggplot(expts.100.size, aes(x=glabel, y=density)) + geom_violin() + geom_boxplot(),
+    ggplot(expts.100.size, aes(x=glabel, y=mean.degree)) + geom_violin() + geom_boxplot(),
+    ggplot(expts.100.size, aes(x=glabel, y=(1/mean.min.dist)**2)) + geom_violin() + geom_boxplot(),
+    nrow=1
+  ),
+  nrow=2
+)
+
+lm(mean.degree ~ density, data=expts.100.size)
+
+ggplot(expts.100.size, aes(x=glabel, y=area)) + geom_violin() + geom_boxplot()
+
+
+ggplot(expts.100.size, aes(x=glabel, y=mean.degree/density)) + geom_violin() + geom_boxplot()
+ggplot(expts.100.size, aes(x=glabel, y=(1/mean.min.dist**2)/density)) + geom_violin() + geom_boxplot()
+
+expts.100.size$norm.degree = expts.100.size$mean.degree/expts.100.size$density
+expts.100.size$norm.mmd = expts.100.size$mean.min.dist/expts.100.size$density
+tester = expts.100.size
+tester$glabel[tester$glabel=="WT-2"] = "WT"
+tester$glabel[tester$glabel=="msh1-2"] = "msh1"
+aov.mmd = aov(norm.mmd ~ glabel, data=tester)
+summary(aov.mmd)
+TukeyHSD(aov.mmd)
+
+aov.deg = aov(norm.degree ~ glabel, data=tester)
+summary(aov.deg)
+TukeyHSD(aov.deg)
+
+expts.100.size$stat = expts.100.size$mean.degree/expts.100.size$density
+ggplot(expts.100.size, aes(x=density, y=stat, color=glabel)) + geom_point()
+ggplot(expts.100.size, aes(x=glabel, y=stat, color=glabel)) + geom_beeswarm()
+t.test(expts.100.size$stat[expts.100.size$glabel=="WT"], expts.100.size$stat[expts.100.size$glabel=="friendly"])
+
+ggplot(tester, aes(x=glabel, y=mean.degree/density)) + geom_violin() + geom_boxplot()
+ggplot(tester, aes(x=glabel, y=(1/mean.min.dist**2)/density)) + geom_violin() + geom_boxplot()
+
+
+expts.100.bak = expts.100
+expts.100 = expts.100.size
+png("comparison.png", width=800*sf, height=600*sf, res=72*sf)
+ggarrange(
+  ggplot(expts.100, aes(x=glabel, y=num.vertices)) + geom_violin() + geom_boxplot() +ggtitle("N vertex"),
+  ggplot(expts.100, aes(x=glabel, y=singletons/num.vertices)) + geom_violin() + geom_boxplot() +ggtitle("Singleton proportion"),
+  ggplot(expts.100, aes(x=glabel, y=num.edges)) + geom_violin() + geom_boxplot() +ggtitle("N edges"),
+  ggplot(expts.100, aes(x=glabel, y=betweenness)) + geom_violin() + geom_boxplot() + ggtitle("Betweenness"),
+  ggplot(expts.100, aes(x=glabel, y=mean.min.dist)) + geom_violin() + geom_boxplot() + ggtitle("Mean min dist"),
+  ggplot(expts.100, aes(x=glabel, y=mean.degree)) + geom_violin() + geom_boxplot() + ggtitle("Mean degree"),
+  ggplot(expts.100, aes(x=glabel, y=max.degree)) + geom_violin() + geom_boxplot() + ggtitle("Max degree"),
+  ggplot(expts.100, aes(x=glabel, y=cc.num)) + geom_violin() + geom_boxplot() + ggtitle("CC num"),
+  ggplot(traj.df.len, aes(x=glabel, y=mean_traj_count) ) + geom_violin() + geom_boxplot() + ggtitle("Traj length"),
+  ggplot(cell.areas, aes(x=glabel, y=area)) + geom_violin() + geom_boxplot() + ggtitle("Hull areas"),
+  ggplot(expts.100, aes(x=glabel, y=density)) + geom_violin() + geom_boxplot() + ggtitle("Mito density"),
+  ggplot(df_diff, aes(x=glabel, y=log10(speed))) + geom_violin() + geom_boxplot() + ggtitle("Speeds"),
+  nrow=3, ncol=4
+)
+dev.off()
+
+wip.df = expts.100.size
+wip.df$genome = wip.df$glabel
+wip.df$drug = "none"
+wip.df$llabel = "UK"
+wip.df$llabel[wip.df$glabel=="WT-2"] = "USA"
+wip.df$llabel[wip.df$glabel=="msh1-2"] = "USA"
+wip.df$llabel[wip.df$glabel=="msh1-cipro"] = "USA"
+wip.df$llabel[wip.df$glabel=="cipro"] = "USA"
+wip.df$genome[wip.df$glabel=="WT-2"] = "WT"
+wip.df$genome[wip.df$glabel=="msh1-2"] = "msh1"
+wip.df$genome[wip.df$glabel=="msh1-cipro"] = "msh1"
+wip.df$genome[wip.df$glabel=="cipro"] = "WT"
+wip.df$drug[wip.df$glabel=="msh1-cipro"] = "cipro"
+wip.df$drug[wip.df$glabel=="cipro"] = "cipro"
+
+place.aov = aov(mean.degree ~ genome + llabel, data=wip.df[wip.df$drug=="none",])
+gxe.aov = aov(mean.degree ~ genome + drug, data=wip.df)
+all.aov = aov(mean.degree ~ llabel + genome + drug, data=wip.df)
+
+ggplot(wip.df, aes(x=genome, y=mean.degree, fill=drug)) + geom_violin() + geom_boxplot() + ggtitle("Mean degree")
+
+summary(place.aov)
+summary(gxe.aov)
+summary(all.aov)
+
+TukeyHSD(place.aov)
+TukeyHSD(gxe.aov)
+TukeyHSD(all.aov)
