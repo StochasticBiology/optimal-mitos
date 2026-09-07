@@ -19,6 +19,7 @@ do
 done
 
 # run simulations
+cd ..
 gcc -o3 simulate.c -lm -o simulate.ce
 
 ./simulate.ce 1 > tmp1 &
