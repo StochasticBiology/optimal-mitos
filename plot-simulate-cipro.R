@@ -1,5 +1,4 @@
 library(ggplot2)
-library(gridExtra)
 library(igraph)
 library(ggraph)
 library(ggbeeswarm)
@@ -7,8 +6,27 @@ library(ggpubr)
 library(dplyr)
 library(tidyr)
 library(ggforce)
+library(sp)
 
-######## first a collection of example parameterisations
+# ensure pipeline.sh has been run before this code!
+
+# Layout:
+#### TASK 1: plot visualisations for a collection of example parameterisations
+#### TASK 2: parameter scan through simulated dynamics
+#### TASK 3: load experimental data
+#### TASK 4: illustration of simulated and experimental data
+#### TASK 5: compare experiments to similarly-geometry simulations
+#### TASK 6: visualise the morphospace of possible behaviours
+#### TASK 7: quantify proximity to Pareto front
+#### TASK 8: consider set-valued optimisation picture
+#### TASK 9: "inference without data"
+#### TASK 10: parameter determinants of Pareto front
+#### TASK 11: density and other considerations across experiments
+
+
+#### TASK 1: plot visualisations for a collection of example parameterisations
+
+# before this, ensure that simulate.c has been run (see pipeline.sh)
 
 # simulation code outputs trajectories to test[X].csv and adj mats to test[X].csv-am.csv, 
 # where X labels a particular example parameterisation
@@ -28,7 +46,9 @@ for(expt in 1:12) {
   
   # subset just final point and plot these in green with trajectories
   sub1 = traj.df[traj.df$frame == max(traj.df$frame),]
-  g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
+  #g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
+    
+  g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -17, xmax = 47, ymin = -2, ymax = 102), fill="black") +
     geom_path(data=sub, aes(x=y,y=x,color=factor(mito)), alpha=0.5) + 
     geom_point(data=sub1, aes(x=y,y=x), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
     #theme(plot.background = element_rect(fill = "black")) + 
@@ -45,7 +65,7 @@ for(expt in 1:12) {
 # various layouts for talks
 sf = 2
 png("example-traces-nets.png", width=400*sf, height=700*sf, res=72*sf)
-grid.arrange(g1a[[4]], g3[[4]],
+ggarrange(g1a[[4]], g3[[4]],
              g1a[[10]], g3[[10]],
              g1a[[12]], g3[[12]], nrow=3, ncol=2,
              widths=c(1,3))
@@ -53,18 +73,18 @@ dev.off()
 
 sf = 2
 png("example-traces-nets-2.png", width=700*sf, height=400*sf, res=72*sf)
-grid.arrange(g1a[[4]], g3[[4]],
+ggarrange(g1a[[4]], g3[[4]],
              g1a[[10]], g3[[10]],
              g1a[[12]], g3[[12]], nrow=2, ncol=4,
              widths=c(1,2,1,2))
 dev.off()
 
-ga = grid.arrange(grobs = g1a, nrow=2)
-gc = grid.arrange(grobs = g3, nrow=2)
+ga = ggarrange(plotlist = g1a, nrow=2)
+gc = ggarrange(plotlist = g3, nrow=2)
 
-gac = grid.arrange(ga, gc, nrow=2)
+gac = ggarrange(ga, gc, nrow=2)
 
-grid.arrange(g1a[[4]], g3[[4]],
+ggarrange(g1a[[4]], g3[[4]],
              g1a[[10]], g3[[10]],
              g1a[[8]], g3[[8]],
              g1a[[5]], g3[[5]])
@@ -78,15 +98,15 @@ gb = ggplot(stats.df, aes(x=log(1/meanmin), y=log(1/meanedges),color=factor(para
   theme(legend.position="none")
 
 png("examples-scatter.png", width=400*sf, height=250*sf)
-grid.arrange(gac, gb, widths=c(1.4,1))
+ggarrange(gac, gb, widths=c(1.4,1))
 dev.off()
 
 myres = 2
 png(paste(c("examples", exptset, ".png"), collapse=""), width=1000*myres, height=400*myres, res=72*myres)
-grid.arrange(ga, gb, nrow=1, widths=c(2,1))  
+ggarrange(ga, gb, nrow=1, widths=c(2,1))  
 dev.off()
 
-######## now onto parameter scan
+#### TASK 2: parameter scan through simulated dynamics
 
 # pull summary statistics for large parameter scan from the full simulation code
 stats.df = data.frame()
@@ -147,7 +167,7 @@ p.kmito = ggplot(samples[samples$class != "",], aes(x=kmito, fill=class)) +
   geom_histogram(data=samples[samples$class == "2",], position="dodge", aes(x=kmito, y = after_stat(count / sum(count)))) + 
   geom_histogram(data=samples[samples$class == "4",], position="dodge", aes(x=kmito+0.005, y = after_stat(count / sum(count)))) 
 
-grid.arrange(p.D, p.kon, p.koff, p.V, p.dmito, p.kmito, nrow=2)
+ggarrange(p.D, p.kon, p.koff, p.V, p.dmito, p.kmito, nrow=2)
 
 # characterise Pareto front
 mins = data.frame()
@@ -167,7 +187,7 @@ chull(samples$x, samples$y)
 ghull = ggplot(samples, aes(x=x, y=y)) + geom_point() + geom_point(data=mins, aes(x=x, y=y), color="red")
 
 # plot distributions of parameters that lie on the Pareto front
-gposts = grid.arrange(ggplot(mins, aes(x=D)) + geom_histogram(),
+gposts = ggarrange(ggplot(mins, aes(x=D)) + geom_histogram(),
                       ggplot(mins, aes(x=kon)) + geom_histogram(),
                       ggplot(mins, aes(x=koff)) + geom_histogram(),
                       ggplot(mins, aes(x=V)) + geom_histogram(),
@@ -176,41 +196,34 @@ gposts = grid.arrange(ggplot(mins, aes(x=D)) + geom_histogram(),
                       nrow=2)
 
 png("inference-expt.png", width=800*myres, height=300*myres, res=72*myres)
-grid.arrange(ghull, gposts, nrow=1)
+ggarrange(ghull, gposts, nrow=1)
 dev.off()
 
-######## now engage with experiments
+#### TASK 3: load experimental data
 
 n.wt = 18
 n.msh1 = 28
 n.friendly = 19
 n.cipro = 33
 n.msh1.cipro = 40
-n.no.cipro = 32
-n.msh1.no.cipro = 35
 
-# read in WT samples
+# read in experimental samples
+# before doing this, ensure that the analysis script has been run across all experimental observations (see pipeline.sh)
 flabels = c("plant-mito-dynamics-main/mtgfp-rawtrajectories/mtGFP-",
             "plant-mito-dynamics-main/msh1-rawtrajectories/MSH-",
             "plant-mito-dynamics-main/friendly-rawtrajectories/Friendly-",
-            "plant-mito-dynamics-main/cipro-rawtrajectories/cipro-",
-            "plant-mito-dynamics-main/cipro-rawtrajectories/msh1Cip-",
-            "plant-mito-dynamics-main/cipro-rawtrajectories/mtgfp-",
-            "plant-mito-dynamics-main/cipro-rawtrajectories/msh1MS-")
+            "cipro-rawtrajectories/cipro-",
+            "cipro-rawtrajectories/msh1Cip-")
 expt.ns = c(n.wt,
             n.msh1,
             n.friendly,
             n.cipro,
-            n.msh1.cipro,
-            n.no.cipro,
-            n.msh1.no.cipro)
+            n.msh1.cipro)
 exptlabels = c("WT",
                "msh1",
                "friendly",
                "cipro",
-               "msh1-cipro",
-               "WT-2",
-               "msh1-2")
+               "msh1-cipro")
 
 mypng = function(protocol, fstr, width, height, res) {
   fname = paste0(c("pr-", protocol, "-", fstr), collapse="")
@@ -218,19 +231,7 @@ mypng = function(protocol, fstr, width, height, res) {
 }
 
 protocol = 5
-if(protocol == 1) {
-  expt.set = 1:7 
-} else if(protocol == 2) {
-  expt.set = c(1, 2, 3, 4, 6)
-} else if(protocol == 3) {
-  expt.set = 1:7
-  exptlabels[exptlabels=="WT-2"] = "WT"
-  exptlabels[exptlabels=="msh1-2"] = "msh1"
-} else if(protocol == 4) {
-  expt.set = c(1, 2, 3, 4)
-} else if(protocol == 5) {
-  expt.set = c(1, 2, 3, 4, 5)
-}
+expt.set = 1:5
 
 expts.df = expts.traj.df = ams.df = data.frame()
 for(expt in expt.set) {
@@ -263,6 +264,7 @@ for(expt in expt.set) {
   }
 }
 
+#### TASK 4: illustration of simulated and experimental data
 
 # visualise (previously read) simulations and experiments together
 # a nice example set of experiments
@@ -313,7 +315,7 @@ mypng(protocol, "all-demo-image.png", width=1200*sf, height=450*sf, res=72*sf)
 ggarrange(g.all.1, g.all.2, g.all.3, g.all.4, nrow=2, ncol=2, widths=c(1,1.1), heights=c(1.5,1))
 dev.off()
 
-########## actual optimality analysis
+#### TASK 5: compare experiments to similarly-geometry simulations
 
 # get mito counts from different experiments
 nset.df = data.frame()
@@ -368,7 +370,7 @@ mypng(protocol, paste0("ind-trajs.png", collapse=""), width=1000*sf, height=2000
 ggarrange(plotlist = complist)
 dev.off()
 
-######## pooled morphospace
+#### TASK 6: visualise the morphospace of possible behaviours
 
 nlevel= length(unique(expts.df$glabel))
 col.set = c("#FFFFFF", viridis::viridis(nlevel, option="inferno")[2:nlevel])
@@ -490,7 +492,7 @@ mypng(protocol, "pareto-talks-3.png", width=640*sf, height=360*sf, res=72*sf)
 print(g.all.1)
 dev.off()
 
-######### closeness to front
+#### TASK 7: quantify proximity to Pareto front
 
 null.dists.df = expt.dists.df = data.frame()
 sub = samples[1:100,]
@@ -547,7 +549,8 @@ wilcox.test(plot.dists$d[plot.dists$label=="msh1"], plot.dists$d[plot.dists$labe
 wilcox.test(plot.dists$d[plot.dists$label=="friendly"], plot.dists$d[plot.dists$label=="WT"],)
 wilcox.test(plot.dists$d[plot.dists$label=="msh1"], plot.dists$d[plot.dists$label=="friendly"],)
 
-############# set-valued optimisation
+#### TASK 8: consider set-valued optimisation picture
+
 #### still a WIP
 nsamp = nrow(stats.df[stats.df$expt == 1,])
 
@@ -587,7 +590,7 @@ mypng(protocol, "set-valued.png", width=600*sf, height=250*sf, res=72*sf)
 ggarrange(g.set.1, g.set.2)
 dev.off()
 
-########### "inference without data"
+#### TASK 9: "inference without data"
 # further inference, based on Pareto front and experimental observations
 
 # get the mean wildtype behaviour
@@ -618,7 +621,8 @@ ggplot(new.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist
   theme_minimal()
 dev.off()
 
-####### exploring parameter determinants of Pareto front
+#### TASK 10: parameter determinants of Pareto front
+
 baseplot = ggplot(data=samples, aes(x=x,y=y)) + scale_color_gradient(low = "blue", high = "red") + theme_light() #+ theme(legend.position = "none") 
 
 p.alpha = 0.2
@@ -637,7 +641,7 @@ p.list = list(
   baseplot + geom_point(aes(color=kon/koff), alpha=p.alpha, size=p.size) )
 
 mypng(protocol, "scatter-vars.png", width=900*sf, height=600*sf, res=72*sf)
-grid.arrange(grobs=p.list)
+ggarrange(plotlist=p.list)
 dev.off()
 
 # So the specific case koff = 0 splits the distribution. Removing this:
@@ -675,6 +679,10 @@ traj.df = expts.traj.df %>%
 traj.df$glabel = factor(traj.df$glabel, levels = unique(expts.traj.df$glabel))
 ggplot(traj.df, aes(x=glabel, y=unique_traj_count)) + geom_violin() + geom_beeswarm()
 
+traj.count.aov = aov(unique_traj_count ~ glabel, data = traj.df)
+summary(traj.count.aov)
+TukeyHSD(traj.count.aov)
+
 traj.df.len = expts.traj.df %>%
   group_by(glabel, elabel, traj) %>%
   summarise(traj_count = n()) %>%
@@ -695,9 +703,6 @@ if(nrow(expts.1)==nrow(expts.100)) {
 }
 
 expts.100$glabel = factor(expts.100$glabel, levels = unique(expts.traj.df$glabel))
-
-
-library(sp)
 
 # Function to calculate the area of the convex hull
 calculate_convex_hull_area <- function(data) {
@@ -757,7 +762,7 @@ ggarrange(
 
 }
 
-######## taking this section up Sep 2026
+#### TASK 11: density and other considerations across experiments
 
 # attempt some normalisations by cell size
 expts.100.size = expts.100
@@ -798,7 +803,6 @@ ggarrange( g.all.1.alt,
            nrow = 1, labels=c("A", ""), widths=c(1,1))
 dev.off()
 
-#XXXX THIS PLOT
 
 ggplot(expts.100.size, aes(x=glabel, y=mean.degree)) + geom_violin() + geom_boxplot() 
 
@@ -880,32 +884,3 @@ ggarrange(
   nrow=3, ncol=4
 )
 dev.off()
-
-wip.df = expts.100.size
-wip.df$genome = wip.df$glabel
-wip.df$drug = "none"
-wip.df$llabel = "UK"
-wip.df$llabel[wip.df$glabel=="WT-2"] = "USA"
-wip.df$llabel[wip.df$glabel=="msh1-2"] = "USA"
-wip.df$llabel[wip.df$glabel=="msh1-cipro"] = "USA"
-wip.df$llabel[wip.df$glabel=="cipro"] = "USA"
-wip.df$genome[wip.df$glabel=="WT-2"] = "WT"
-wip.df$genome[wip.df$glabel=="msh1-2"] = "msh1"
-wip.df$genome[wip.df$glabel=="msh1-cipro"] = "msh1"
-wip.df$genome[wip.df$glabel=="cipro"] = "WT"
-wip.df$drug[wip.df$glabel=="msh1-cipro"] = "cipro"
-wip.df$drug[wip.df$glabel=="cipro"] = "cipro"
-
-place.aov = aov(mean.degree ~ genome + llabel, data=wip.df[wip.df$drug=="none",])
-gxe.aov = aov(mean.degree ~ genome + drug, data=wip.df)
-all.aov = aov(mean.degree ~ llabel + genome + drug, data=wip.df)
-
-ggplot(wip.df, aes(x=genome, y=mean.degree, fill=drug)) + geom_violin() + geom_boxplot() + ggtitle("Mean degree")
-
-summary(place.aov)
-summary(gxe.aov)
-summary(all.aov)
-
-TukeyHSD(place.aov)
-TukeyHSD(gxe.aov)
-TukeyHSD(all.aov)
