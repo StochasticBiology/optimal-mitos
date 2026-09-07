@@ -2,7 +2,7 @@
 
 Investigation of the collective behaviour of plant mitochondria, through the lens of multi-objective optimisation
 
-<img width="452" height="262" alt="image" src="https://github.com/user-attachments/assets/07046e71-3562-40e8-a8f7-423587bc47c0" />
+<img width="904" height="524" alt="image" src="https://github.com/user-attachments/assets/07046e71-3562-40e8-a8f7-423587bc47c0" />
 
 Overview
 ----
