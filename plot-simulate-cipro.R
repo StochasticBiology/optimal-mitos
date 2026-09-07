@@ -15,7 +15,7 @@ library(sp)
 #### TASK 2: parameter scan through simulated dynamics
 #### TASK 3: load experimental data
 #### TASK 4: illustration of simulated and experimental data
-#### TASK 5: compare experiments to similarly-geometry simulations
+#### TASK 5: compare experiments to similar-geometry simulations
 #### TASK 6: visualise the morphospace of possible behaviours
 #### TASK 7: quantify proximity to Pareto front
 #### TASK 8: consider set-valued optimisation picture
@@ -315,7 +315,7 @@ mypng(protocol, "all-demo-image.png", width=1200*sf, height=450*sf, res=72*sf)
 ggarrange(g.all.1, g.all.2, g.all.3, g.all.4, nrow=2, ncol=2, widths=c(1,1.1), heights=c(1.5,1))
 dev.off()
 
-#### TASK 5: compare experiments to similarly-geometry simulations
+#### TASK 5: compare experiments to similar-geometry simulations
 
 # get mito counts from different experiments
 nset.df = data.frame()
