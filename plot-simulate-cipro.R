@@ -79,8 +79,8 @@ ggarrange(g1a[[4]], g3[[4]],
              widths=c(1,2,1,2))
 dev.off()
 
-ga = ggarrange(plotlist = g1a, nrow=2)
-gc = ggarrange(plotlist = g3, nrow=2)
+ga = ggarrange(plotlist = g1a, nrow=2, ncol=length(g1a)/2)
+gc = ggarrange(plotlist = g3, nrow=2, ncol=length(g1a)/2)
 
 gac = ggarrange(ga, gc, nrow=2)
 
@@ -193,7 +193,7 @@ gposts = ggarrange(ggplot(mins, aes(x=D)) + geom_histogram(),
                       ggplot(mins, aes(x=V)) + geom_histogram(),
                       ggplot(mins, aes(x=dmito)) + geom_histogram(),
                       ggplot(mins, aes(x=kmito)) + geom_histogram(),
-                      nrow=2)
+                      nrow=2, ncol=3)
 
 png("inference-expt.png", width=800*myres, height=300*myres, res=72*myres)
 ggarrange(ghull, gposts, nrow=1)
@@ -884,3 +884,4 @@ ggarrange(
   nrow=3, ncol=4
 )
 dev.off()
+
