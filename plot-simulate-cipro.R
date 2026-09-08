@@ -12,6 +12,7 @@ library(sp)
 
 # Layout:
 #### TASK 1: plot visualisations for a collection of example parameterisations
+#### TASK 1a: illustrations for post-identified optimal parameters
 #### TASK 2: parameter scan through simulated dynamics
 #### TASK 3: load experimental data
 #### TASK 4: illustration of simulated and experimental data
@@ -19,7 +20,7 @@ library(sp)
 #### TASK 6: visualise the morphospace of possible behaviours
 #### TASK 7: quantify proximity to Pareto front
 #### TASK 8: consider set-valued optimisation picture
-#### TASK 9: "inference without data"
+#### TASK 9: "inference without data" and inference
 #### TASK 10: parameter determinants of Pareto front
 #### TASK 11: density and other considerations across experiments
 
@@ -104,6 +105,47 @@ dev.off()
 myres = 2
 png(paste(c("examples", exptset, ".png"), collapse=""), width=1000*myres, height=400*myres, res=72*myres)
 ggarrange(ga, gb, nrow=1, widths=c(2,1))  
+dev.off()
+
+#### TASK 1a: illustrations for post-identified optimal parameters
+opt.g1 = opt.g1a = opt.g3 = list()
+for(expt in 1:3) {
+  # read trajectories
+  fname = paste(c("optex", expt, ".csv"), collapse="")
+  traj.df = read.csv(fname)
+  # subset last few steps of trajectories and plot
+  sub = traj.df[traj.df$frame > max(traj.df$frame)-picset,]
+  opt.g1[[expt]] = ggplot(sub, aes(x=y,y=x,color=factor(mito)))  + 
+    geom_path() +theme_void() +theme(legend.position="none") 
+  
+  # subset just final point and plot these in green with trajectories
+  sub1 = traj.df[traj.df$frame == max(traj.df$frame),]
+  #g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
+  this.x1 = min(traj.df$y)-20
+  this.x2 = max(traj.df$y)+20
+  this.y1 = min(traj.df$x)-2
+  this.y2 = max(traj.df$x)+2
+  b.df = data.frame(this.x1 = this.x1, 
+                    this.x2 = this.x2,
+                    this.y1 = this.y1,
+                    this.y2 = this.y2)
+  opt.g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = this.x1, xmax = this.x2, ymin = this.y1, ymax = this.y2), data = b.df, fill="black") +
+    geom_path(data=sub, aes(x=y,y=x,color=factor(mito)), alpha=0.5) + 
+    geom_point(data=sub1, aes(x=y,y=x), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
+    #theme(plot.background = element_rect(fill = "black")) + 
+    theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
+  
+  # pull adj mat and plot
+  am.df = read.csv(paste(c("test", expt-1, exptset, ".csv-am.csv"), collapse=""))
+  edgelist.frame = as.matrix(data.frame(t1 = as.character(am.df$mito1), t2 = as.character(am.df$mito2))) 
+  amg = graph_from_edgelist(edgelist.frame, directed=F)
+  opt.g3[[expt]] = ggraph(amg, layout="nicely") + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
+    theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
+}
+
+png("optimal-demos.png", width=600*sf, height=400*sf, res=72*sf)
+ggarrange(opt.g1a[[1]], opt.g1a[[2]], opt.g1a[[3]], opt.g3[[1]], opt.g3[[2]], opt.g3[[3]],
+          nrow=2, ncol=3, heights=c(1.6,1), labels=c("A", "B", "C"))
 dev.off()
 
 #### TASK 2: parameter scan through simulated dynamics
@@ -209,9 +251,9 @@ n.msh1.cipro = 40
 
 # read in experimental samples
 # before doing this, ensure that the analysis script has been run across all experimental observations (see pipeline.sh)
-flabels = c("plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-",
-            "plant-mito-dynamics/msh1-rawtrajectories/MSH-",
-            "plant-mito-dynamics/friendly-rawtrajectories/Friendly-",
+flabels = c("plant-mito-dynamics-main/mtgfp-rawtrajectories/mtGFP-",
+            "plant-mito-dynamics-main/msh1-rawtrajectories/MSH-",
+            "plant-mito-dynamics-main/friendly-rawtrajectories/Friendly-",
             "cipro-rawtrajectories/cipro-",
             "cipro-rawtrajectories/msh1Cip-")
 expt.ns = c(n.wt,
@@ -590,7 +632,7 @@ mypng(protocol, "set-valued.png", width=600*sf, height=250*sf, res=72*sf)
 ggarrange(g.set.1, g.set.2)
 dev.off()
 
-#### TASK 9: "inference without data"
+#### TASK 9: "inference without data" and inference
 # further inference, based on Pareto front and experimental observations
 
 # get the mean wildtype behaviour
@@ -610,15 +652,51 @@ inv.set$stat = 0
 hist.set = rbind(samples, mins, inv.set)
 new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
 
-# plot parameters in each class of closeness
-sf = 2
-mypng(protocol, "inference.png", width=600*sf, height=200*sf, res=72*sf)
-ggplot(new.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
+inf.1.plot = ggplot(new.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
   geom_bar(position = "dodge", alpha=0.8) + 
   scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
   facet_wrap(~name, scales = "free", nrow = 2) +
   labs(x = "", y="", fill = "Subset of\nmorphospace") +
   theme_minimal()
+
+# plot parameters in each class of closeness
+sf = 2
+mypng(protocol, "inference.png", width=600*sf, height=200*sf, res=72*sf)
+print(inf.1.plot)
+dev.off()
+
+# do the inference across experiments
+all.hist.set = data.frame()
+delta = 3
+for(this.expt in glab.set) {
+mean.x = mean(expts.df$mean.min.dist[expts.df$glabel==this.expt])
+mean.y = mean(expts.df$mean.degree[expts.df$glabel==this.expt])
+
+# subset simulations close to this
+# previously we built "mins", a dataframe of simulations on the Pareto front
+inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
+inv.set$hist.ref = this.expt
+inv.set$stat = 0
+### columns bug here XXX
+new.inv.set = inv.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
+all.hist.set = rbind(all.hist.set, new.inv.set)
+}
+
+# plot parameters in each class of closeness
+sf = 2
+all.hist.set$hist.ref = factor(all.hist.set$hist.ref, levels=c("WT", "msh1", "friendly", "cipro", "msh1-cipro"))
+inf.2.plot = ggplot(all.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
+  geom_bar(position = position_dodge2(preserve = "single"), alpha=0.8) + 
+  facet_wrap(~name, scales = "free", nrow = 2) +
+  scale_fill_viridis_d(option="magma", end=0.9) +
+  labs(x = "", y="", fill = "Experiment") +
+  theme_minimal()
+mypng(protocol, "all-inference.png", width=600*sf, height=200*sf, res=72*sf)
+print(inf.2.plot)
+dev.off()
+
+mypng(protocol, "all-inference-both.png", width=600*sf, height=400*sf, res=72*sf)
+print(ggarrange(inf.1.plot, inf.2.plot, nrow=2, labels=c("A", "B")))
 dev.off()
 
 #### TASK 10: parameter determinants of Pareto front
