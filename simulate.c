@@ -259,8 +259,8 @@ int main(int argc, char *argv[])
 
   srand48(seed);
   
-  meanmin = (double*)malloc(sizeof(double)*ns*100);
-  meanedges = (double*)malloc(sizeof(double)*ns*100);
+  meanmin = (double*)malloc(sizeof(double)*10*100);
+  meanedges = (double*)malloc(sizeof(double)*10*100);
 
   // units of the system: length 1 = 1 um, time 1 = 1 frame = 2s
   
@@ -372,6 +372,20 @@ int main(int argc, char *argv[])
   P.D = scaled*1; P.kon = 0.1; P.koff = 0.1; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*5; P.dmito = 0; P.kmito = 1;
   AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test11.csv"); expt++;
 
+  /* some specific examples of optimality taken after processing the output
+  seed    D inter  kon koff   V dmito kmito  expt sample         Cx        Cy  Cn
+    3 0.05     0 1.00 0.25 1.6     2   2.0 43106      0 110.758853 35.763588 177
+    1 0.00     5 1.00 0.25 1.6     8   4.0 21310      0 193.552076 52.484545 167
+    1 0.00   -20 1.00 0.25 1.6     8   2.0 21306      0 140.013995 45.416262 120
+  */
+  
+  P.D = 0.05; P.inter = 0; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 2; P.kmito = 2; P.Cx = 110.8; P.Cy = 35.8; P.Cn = 177;
+  AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex1.csv"); expt++;
+  P.D = 0.0;  P.inter = 5; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 8; P.kmito = 4; P.Cx = 193.6; P.Cy = 52.5; P.Cn = 167;
+  AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex2.csv"); expt++;
+  P.D = 0.0; P.inter = -20; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 8; P.kmito = 2; P.Cx = 140.0; P.Cy = 45.4; P.Cn = 120;
+  AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex3.csv"); expt++;
+    
   sprintf(fname, "outstats-%i.csv", seed);
   fp= fopen(fname, "w");
   fprintf(fp, "seed,params,sample,meanmin,meanedges\n");
