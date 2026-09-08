@@ -251,9 +251,9 @@ n.msh1.cipro = 40
 
 # read in experimental samples
 # before doing this, ensure that the analysis script has been run across all experimental observations (see pipeline.sh)
-flabels = c("plant-mito-dynamics-main/mtgfp-rawtrajectories/mtGFP-",
-            "plant-mito-dynamics-main/msh1-rawtrajectories/MSH-",
-            "plant-mito-dynamics-main/friendly-rawtrajectories/Friendly-",
+flabels = c("plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-",
+            "plant-mito-dynamics/msh1-rawtrajectories/MSH-",
+            "plant-mito-dynamics/friendly-rawtrajectories/Friendly-",
             "cipro-rawtrajectories/cipro-",
             "cipro-rawtrajectories/msh1Cip-")
 expt.ns = c(n.wt,
