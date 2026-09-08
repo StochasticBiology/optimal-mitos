@@ -48,7 +48,7 @@ for(expt in 1:12) {
   # subset just final point and plot these in green with trajectories
   sub1 = traj.df[traj.df$frame == max(traj.df$frame),]
   #g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
-    
+  
   g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -17, xmax = 47, ymin = -2, ymax = 102), fill="black") +
     geom_path(data=sub, aes(x=y,y=x,color=factor(mito)), alpha=0.5) + 
     geom_point(data=sub1, aes(x=y,y=x), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
@@ -67,17 +67,17 @@ for(expt in 1:12) {
 sf = 2
 png("example-traces-nets.png", width=400*sf, height=700*sf, res=72*sf)
 ggarrange(g1a[[4]], g3[[4]],
-             g1a[[10]], g3[[10]],
-             g1a[[12]], g3[[12]], nrow=3, ncol=2,
-             widths=c(1,3))
+          g1a[[10]], g3[[10]],
+          g1a[[12]], g3[[12]], nrow=3, ncol=2,
+          widths=c(1,3))
 dev.off()
 
 sf = 2
 png("example-traces-nets-2.png", width=700*sf, height=400*sf, res=72*sf)
 ggarrange(g1a[[4]], g3[[4]],
-             g1a[[10]], g3[[10]],
-             g1a[[12]], g3[[12]], nrow=2, ncol=4,
-             widths=c(1,2,1,2))
+          g1a[[10]], g3[[10]],
+          g1a[[12]], g3[[12]], nrow=2, ncol=4,
+          widths=c(1,2,1,2))
 dev.off()
 
 ga = ggarrange(plotlist = g1a, nrow=2, ncol=length(g1a)/2)
@@ -86,9 +86,9 @@ gc = ggarrange(plotlist = g3, nrow=2, ncol=length(g1a)/2)
 gac = ggarrange(ga, gc, nrow=2)
 
 ggarrange(g1a[[4]], g3[[4]],
-             g1a[[10]], g3[[10]],
-             g1a[[8]], g3[[8]],
-             g1a[[5]], g3[[5]])
+          g1a[[10]], g3[[10]],
+          g1a[[8]], g3[[8]],
+          g1a[[5]], g3[[5]])
 
 # simulation code also outputs summary statistics (mean min distance, mean edges) to outstats.csv
 stats.df = read.csv(paste(c("outstats", exptset, ".csv"), collapse=""))
@@ -159,14 +159,14 @@ for(i in 1:5) {
 
 # plot of theoretical behaviours
 if(FALSE) {
-gx = ggplot(stats.df, aes(x=log(1/meanmin), y=log(1/meanedges),color=expt)) + 
-  geom_point(alpha=0.5, size=0.25) + theme_classic() + theme(legend.position="none") +
-  xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
-
-myres = 2
-png("fullset.png", width=400*myres, height=300*myres, res=72*myres)
-gx 
-dev.off()
+  gx = ggplot(stats.df, aes(x=log(1/meanmin), y=log(1/meanedges),color=expt)) + 
+    geom_point(alpha=0.5, size=0.25) + theme_classic() + theme(legend.position="none") +
+    xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)")
+  
+  myres = 2
+  png("fullset.png", width=400*myres, height=300*myres, res=72*myres)
+  gx 
+  dev.off()
 }
 
 # downsample for plotting convenience
@@ -230,12 +230,12 @@ ghull = ggplot(samples, aes(x=x, y=y)) + geom_point() + geom_point(data=mins, ae
 
 # plot distributions of parameters that lie on the Pareto front
 gposts = ggarrange(ggplot(mins, aes(x=D)) + geom_histogram(),
-                      ggplot(mins, aes(x=kon)) + geom_histogram(),
-                      ggplot(mins, aes(x=koff)) + geom_histogram(),
-                      ggplot(mins, aes(x=V)) + geom_histogram(),
-                      ggplot(mins, aes(x=dmito)) + geom_histogram(),
-                      ggplot(mins, aes(x=kmito)) + geom_histogram(),
-                      nrow=2, ncol=3)
+                   ggplot(mins, aes(x=kon)) + geom_histogram(),
+                   ggplot(mins, aes(x=koff)) + geom_histogram(),
+                   ggplot(mins, aes(x=V)) + geom_histogram(),
+                   ggplot(mins, aes(x=dmito)) + geom_histogram(),
+                   ggplot(mins, aes(x=kmito)) + geom_histogram(),
+                   nrow=2, ncol=3)
 
 png("inference-expt.png", width=800*myres, height=300*myres, res=72*myres)
 ggarrange(ghull, gposts, nrow=1)
@@ -516,11 +516,11 @@ g.all.1.a1 = ggplot() +
 g.all.1.b = ggplot() +
   geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
   scale_color_viridis() +
-geom_point(data=expts.df[expts.df$glabel=="WT" & expts.df$frame==key.frame,], 
-           aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=3, shape=21) + 
+  geom_point(data=expts.df[expts.df$glabel=="WT" & expts.df$frame==key.frame,], 
+             aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=3, shape=21) + 
   labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
   theme_minimal()
-  
+
 mypng(protocol, "pareto-talks-1.png", width=640*sf, height=360*sf, res=72*sf)
 print(g.all.1.a)
 dev.off()
@@ -618,14 +618,14 @@ g.set.1 = ggplot() +
                    fill = factor(e)), alpha = 0.3, color="#FFFFFF") +
   scale_fill_viridis_d() + scale_color_viridis_d() + 
   theme_minimal() + theme(legend.position = "none") +
-   labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]")
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]")
 
 g.set.2 = ggplot() + 
   geom_polygon(data=polys.df, aes(x=xs, y=ys, fill=factor(e)), alpha = 0.4) + 
   geom_point(data=stats.df[stats.df$expt %in% eref & stats.df$meanedges > 0,], aes(x = log(1/meanmin), y=log(1/meanedges), color=factor(expt))) +
   theme_minimal() + theme(legend.position = "none") +
   scale_fill_viridis_d() + scale_color_viridis_d() +
-     labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]")
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]")
 
 sf = 2
 mypng(protocol, "set-valued.png", width=600*sf, height=250*sf, res=72*sf)
@@ -642,18 +642,18 @@ mean.y = mean(expts.df$mean.degree[expts.df$glabel=="WT"])
 # subset simulations close to this
 # previously we built "mins", a dataframe of simulations on the Pareto front
 delta = 4
-inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
+inv.set = samples[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
 samples$hist.ref = "All"
 mins$hist.ref = "Pareto"
 inv.set$hist.ref = "Proximal"
 mins$stat = 0
 inv.set$stat = 0
-### columns bug here XXX
+
 hist.set = rbind(samples, mins, inv.set)
 new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
 
 inf.1.plot = ggplot(new.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
-  geom_bar(position = "dodge", alpha=0.8) + 
+  geom_bar(position = position_dodge2(preserve = "single"), alpha=0.8) + 
   scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
   facet_wrap(~name, scales = "free", nrow = 2) +
   labs(x = "", y="", fill = "Subset of\nmorphospace") +
@@ -667,19 +667,19 @@ dev.off()
 
 # do the inference across experiments
 all.hist.set = data.frame()
-delta = 3
+delta = 0.5
 for(this.expt in glab.set) {
-mean.x = mean(expts.df$mean.min.dist[expts.df$glabel==this.expt])
-mean.y = mean(expts.df$mean.degree[expts.df$glabel==this.expt])
-
-# subset simulations close to this
-# previously we built "mins", a dataframe of simulations on the Pareto front
-inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
-inv.set$hist.ref = this.expt
-inv.set$stat = 0
-### columns bug here XXX
-new.inv.set = inv.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
-all.hist.set = rbind(all.hist.set, new.inv.set)
+  mean.x = mean(expts.df$mean.min.dist[expts.df$glabel==this.expt])
+  mean.y = mean(expts.df$mean.degree[expts.df$glabel==this.expt])
+  
+  # subset simulations close to this
+  # previously we built "mins", a dataframe of simulations on the Pareto front
+  inv.set = samples[abs(samples$meanmin-mean.x) < delta & abs(samples$meanedges-mean.y) < delta,]
+  inv.set$hist.ref = this.expt
+  inv.set$stat = 0
+  
+  new.inv.set = inv.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
+  all.hist.set = rbind(all.hist.set, new.inv.set)
 }
 
 # plot parameters in each class of closeness
@@ -691,6 +691,7 @@ inf.2.plot = ggplot(all.hist.set, aes(x=factor(value), y=..prop.., group =hist.r
   scale_fill_viridis_d(option="magma", end=0.9) +
   labs(x = "", y="", fill = "Experiment") +
   theme_minimal()
+inf.2.plot
 mypng(protocol, "all-inference.png", width=600*sf, height=200*sf, res=72*sf)
 print(inf.2.plot)
 dev.off()
@@ -747,7 +748,7 @@ ggplot(df_diff[df_diff$speed > 0,], aes(x=glabel, y=log10(speed), fill=glabel)) 
   geom_boxplot(width = 0.5) +
   scale_fill_manual(values=col.set) + 
   labs(x = "Experiment", y = "log(Speed / um s-1)", fill="Experiment") +
-         theme_light()
+  theme_light()
 dev.off()
 
 ### trajectory counts
@@ -807,37 +808,37 @@ ggplot(cell.areas, aes(x=glabel, y=area)) + geom_violin() + geom_boxplot()
 
 if(FALSE) {
   
-expts.traj.df.sub = expts.traj.df[expts.traj.df$traj < 10,]
-# intractable on mac
-traj.areas <- expts.traj.df.sub %>%
-  group_by(elabel, glabel, traj) %>%
-  summarise(area = calculate_convex_hull_area(cur_data())) %>%
-  ungroup()
-
-traj.areas$glabel = factor(traj.areas$glabel, levels = unique(expts.traj.df$glabel))
-ggplot(traj.areas, aes(x=glabel, y=log(area+1))) + geom_violin() + geom_beeswarm()
+  expts.traj.df.sub = expts.traj.df[expts.traj.df$traj < 10,]
+  # intractable on mac
+  traj.areas <- expts.traj.df.sub %>%
+    group_by(elabel, glabel, traj) %>%
+    summarise(area = calculate_convex_hull_area(cur_data())) %>%
+    ungroup()
+  
+  traj.areas$glabel = factor(traj.areas$glabel, levels = unique(expts.traj.df$glabel))
+  ggplot(traj.areas, aes(x=glabel, y=log(area+1))) + geom_violin() + geom_beeswarm()
 }
 
 
 
 # plot a couple of small ones
 if(FALSE) {
-sub.small = expts.traj.df[expts.traj.df$glabel=="WT-2" & expts.traj.df$elabel <= 2,]
-ggplot(sub.small, aes(x=x,y=y)) + geom_point() + facet_wrap(~elabel, scales = "free")
-ggarrange(
-  ggplot(expts.100, aes(x=glabel, y=num.vertices)) + geom_violin() + geom_beeswarm() +ggtitle("N vertex"),
-  ggplot(expts.100, aes(x=glabel, y=singletons/num.vertices)) + geom_violin() + geom_beeswarm() +ggtitle("Singleton proportion"),
-  ggplot(expts.100, aes(x=glabel, y=num.edges)) + geom_violin() + geom_beeswarm() +ggtitle("N edges"),
-  ggplot(expts.100, aes(x=glabel, y=betweenness)) + geom_violin() + geom_beeswarm() + ggtitle("Betweenness"),
-  ggplot(expts.100, aes(x=glabel, y=mean.min.dist)) + geom_violin() + geom_beeswarm() + ggtitle("Mean min dist"),
-   ggplot(expts.100, aes(x=glabel, y=mean.degree)) + geom_violin() + geom_beeswarm() + ggtitle("Mean degree"),
-   ggplot(expts.100, aes(x=glabel, y=sd.degree)) + geom_violin() + geom_beeswarm() + ggtitle("SD degree"),
-  ggplot(expts.100, aes(x=glabel, y=cc.num)) + geom_violin() + geom_beeswarm() + ggtitle("CC num"),
-  ggplot(traj.df.len, aes(x=glabel, y=mean_traj_count) ) + geom_violin() + geom_beeswarm() + ggtitle("Traj length"),
-  ggplot(cell.areas, aes(x=glabel, y=area)) + geom_violin() + geom_beeswarm() + ggtitle("Hull areas"),
-  nrow=2, ncol=5
-)
-
+  sub.small = expts.traj.df[expts.traj.df$glabel=="WT-2" & expts.traj.df$elabel <= 2,]
+  ggplot(sub.small, aes(x=x,y=y)) + geom_point() + facet_wrap(~elabel, scales = "free")
+  ggarrange(
+    ggplot(expts.100, aes(x=glabel, y=num.vertices)) + geom_violin() + geom_beeswarm() +ggtitle("N vertex"),
+    ggplot(expts.100, aes(x=glabel, y=singletons/num.vertices)) + geom_violin() + geom_beeswarm() +ggtitle("Singleton proportion"),
+    ggplot(expts.100, aes(x=glabel, y=num.edges)) + geom_violin() + geom_beeswarm() +ggtitle("N edges"),
+    ggplot(expts.100, aes(x=glabel, y=betweenness)) + geom_violin() + geom_beeswarm() + ggtitle("Betweenness"),
+    ggplot(expts.100, aes(x=glabel, y=mean.min.dist)) + geom_violin() + geom_beeswarm() + ggtitle("Mean min dist"),
+    ggplot(expts.100, aes(x=glabel, y=mean.degree)) + geom_violin() + geom_beeswarm() + ggtitle("Mean degree"),
+    ggplot(expts.100, aes(x=glabel, y=sd.degree)) + geom_violin() + geom_beeswarm() + ggtitle("SD degree"),
+    ggplot(expts.100, aes(x=glabel, y=cc.num)) + geom_violin() + geom_beeswarm() + ggtitle("CC num"),
+    ggplot(traj.df.len, aes(x=glabel, y=mean_traj_count) ) + geom_violin() + geom_beeswarm() + ggtitle("Traj length"),
+    ggplot(cell.areas, aes(x=glabel, y=area)) + geom_violin() + geom_beeswarm() + ggtitle("Hull areas"),
+    nrow=2, ncol=5
+  )
+  
 }
 
 #### TASK 11: density and other considerations across experiments
@@ -868,16 +869,16 @@ g.density = ggplot(expts.100.size, aes(x=glabel, y=density, fill=glabel)) +
   theme_minimal() + theme(legend.position="none", axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(x = "Subset", y="Density /\nmitos per cell area") 
 
-  
+
 g.density
 
 sf = 2
 mypng(protocol, "multi-opt-cipro-density.png", width=800*sf, height=400*sf, res=72*sf)
 ggarrange( g.all.1.alt, 
            ggarrange(g.all.2.alt, g.density,
-                    g.dist.hyp, g.all.3.stats,
-                               nrow=2, ncol= 2, 
-                    labels=c("B", "C", "D", "E")), 
+                     g.dist.hyp, g.all.3.stats,
+                     nrow=2, ncol= 2, 
+                     labels=c("B", "C", "D", "E")), 
            nrow = 1, labels=c("A", ""), widths=c(1,1))
 dev.off()
 
@@ -894,8 +895,8 @@ ggplot(expts.100.size, aes(x=glabel, y=mean.degree/traj.len)) + geom_boxplot()
 ggarrange(
   ggplot(expts.100.size, aes(x=num.vertices, y=mean.degree, color=glabel)) + geom_point(),
   ggplot(expts.100.size, aes(x=num.vertices, y=1/mean.min.dist, color=glabel)) + geom_point(),
-ggplot(expts.100.size, aes(x=density, y=mean.degree, color=glabel)) + geom_point(),
-ggplot(expts.100.size, aes(x=density, y=1/mean.min.dist, color=glabel)) + geom_point()
+  ggplot(expts.100.size, aes(x=density, y=mean.degree, color=glabel)) + geom_point(),
+  ggplot(expts.100.size, aes(x=density, y=1/mean.min.dist, color=glabel)) + geom_point()
 )
 
 ggarrange(
