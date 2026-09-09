@@ -36,7 +36,7 @@ library(sp)
 exptset = ""
 picset = 10
 g1 = g1a = g3 = list()
-for(expt in 1:12) {
+for(expt in 1:14) {
   # read trajectories
   fname = paste(c("test", expt-1, exptset, ".csv"), collapse="")
   traj.df = read.csv(fname)
@@ -49,7 +49,15 @@ for(expt in 1:12) {
   sub1 = traj.df[traj.df$frame == max(traj.df$frame),]
   #g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
   
-  g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -17, xmax = 47, ymin = -2, ymax = 102), fill="black") +
+  this.x1 = min(sub$y)-20
+  this.x2 = max(sub$y)+20
+  this.y1 = min(sub$x)-2
+  this.y2 = max(sub$x)+2
+  b.df = data.frame(this.x1 = this.x1, 
+                    this.x2 = this.x2,
+                    this.y1 = this.y1,
+                    this.y2 = this.y2)
+  g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = this.x1, xmax = this.x2, ymin = this.y1, ymax = this.y2), data = b.df, fill="black") +
     geom_path(data=sub, aes(x=y,y=x,color=factor(mito)), alpha=0.5) + 
     geom_point(data=sub1, aes(x=y,y=x), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
     #theme(plot.background = element_rect(fill = "black")) + 
@@ -62,6 +70,11 @@ for(expt in 1:12) {
   g3[[expt]] = ggraph(amg, layout="nicely") + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
     theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
 }
+
+ggarrange(
+          g1a[[13]], g3[[13]],
+          g1a[[14]], g3[[14]], nrow=2, ncol=2,
+          widths=c(1,3))
 
 # various layouts for talks
 sf = 2
@@ -91,7 +104,7 @@ ggarrange(g1a[[4]], g3[[4]],
           g1a[[5]], g3[[5]])
 
 # simulation code also outputs summary statistics (mean min distance, mean edges) to outstats.csv
-stats.df = read.csv(paste(c("outstats", exptset, ".csv"), collapse=""))
+stats.df = read.csv(paste(c("outstats-1.csv"), collapse=""))
 
 # plot summary stats
 gb = ggplot(stats.df, aes(x=log(1/meanmin), y=log(1/meanedges),color=factor(params))) + geom_point(alpha=0.5) +
@@ -169,10 +182,20 @@ if(FALSE) {
   dev.off()
 }
 
-# downsample for plotting convenience
+# summary stats
 stats.df$x = log(1/stats.df$meanmin)
 stats.df$y = log(1/stats.df$meanedges)
 
+means.df <- stats.df %>%
+  select(-x, -y) %>%  # drop x and y
+  group_by(across(alpha:Cn)) %>%  # group by all columns from D to Cn
+  summarise(
+    meanmin = mean(meanmin, na.rm = TRUE),
+    meanedges = mean(meanedges, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# downsample for plotting convenience
 set.seed(1)
 samples = stats.df[runif(10000, min=1, max=nrow(stats.df)),]
 samples = samples[!is.na(samples$x) & !is.na(samples$y) & samples$y < 1000,]
@@ -188,6 +211,10 @@ p.D = ggplot(samples[samples$class != "",], aes(x=D, fill=class)) +
   geom_histogram(data=samples[samples$class == "0",], position="dodge", aes(x=D-0.005, y = after_stat(count / sum(count)))) + 
   geom_histogram(data=samples[samples$class == "2",], position="dodge", aes(x=D, y = after_stat(count / sum(count)))) + 
   geom_histogram(data=samples[samples$class == "4",], position="dodge", aes(x=D+0.005, y = after_stat(count / sum(count)))) 
+p.alpha = ggplot(samples[samples$class != "",], aes(x=alpha, fill=class)) + 
+  geom_histogram(data=samples[samples$class == "0",], position="dodge", aes(x=alpha-0.005, y = after_stat(count / sum(count)))) + 
+  geom_histogram(data=samples[samples$class == "2",], position="dodge", aes(x=alpha, y = after_stat(count / sum(count)))) + 
+  geom_histogram(data=samples[samples$class == "4",], position="dodge", aes(x=alpha+0.005, y = after_stat(count / sum(count)))) 
 p.kon = ggplot(samples[samples$class != "",], aes(x=kon, fill=class)) + 
   geom_histogram(data=samples[samples$class == "0",], position="dodge", aes(x=kon-0.005, y = after_stat(count / sum(count)))) + 
   geom_histogram(data=samples[samples$class == "2",], position="dodge", aes(x=kon, y = after_stat(count / sum(count)))) + 
@@ -209,7 +236,7 @@ p.kmito = ggplot(samples[samples$class != "",], aes(x=kmito, fill=class)) +
   geom_histogram(data=samples[samples$class == "2",], position="dodge", aes(x=kmito, y = after_stat(count / sum(count)))) + 
   geom_histogram(data=samples[samples$class == "4",], position="dodge", aes(x=kmito+0.005, y = after_stat(count / sum(count)))) 
 
-ggarrange(p.D, p.kon, p.koff, p.V, p.dmito, p.kmito, nrow=2)
+ggarrange(p.alpha, p.D, p.kon, p.koff, p.V, p.dmito, p.kmito, nrow=2, ncol=4)
 
 # characterise Pareto front
 mins = data.frame()
@@ -223,7 +250,7 @@ for(i in (-45:50)/10) {
   }
 }
 
-chull(samples$x, samples$y)
+#chull(samples$x, samples$y)
 
 # plot with Pareto front highlighted
 ghull = ggplot(samples, aes(x=x, y=y)) + geom_point() + geom_point(data=mins, aes(x=x, y=y), color="red")
@@ -235,7 +262,8 @@ gposts = ggarrange(ggplot(mins, aes(x=D)) + geom_histogram(),
                    ggplot(mins, aes(x=V)) + geom_histogram(),
                    ggplot(mins, aes(x=dmito)) + geom_histogram(),
                    ggplot(mins, aes(x=kmito)) + geom_histogram(),
-                   nrow=2, ncol=3)
+                   ggplot(mins, aes(x=alpha)) + geom_histogram(),
+                   nrow=2, ncol=4)
 
 png("inference-expt.png", width=800*myres, height=300*myres, res=72*myres)
 ggarrange(ghull, gposts, nrow=1)
@@ -642,17 +670,18 @@ mean.y = mean(expts.df$mean.degree[expts.df$glabel=="WT"])
 # subset simulations close to this
 # previously we built "mins", a dataframe of simulations on the Pareto front
 delta = 4
-inv.set = samples[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
+inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
 samples$hist.ref = "All"
 mins$hist.ref = "Pareto"
-inv.set$hist.ref = "Proximal"
+#inv.set$hist.ref = "Proximal"
 mins$stat = 0
 inv.set$stat = 0
 
-hist.set = rbind(samples, mins, inv.set)
-new.hist.set = hist.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
+# XXX cols bugs here
+hist.set = rbind(samples, mins) #, inv.set)
+new.hist.set = hist.set %>% pivot_longer(cols=c("D", "alpha", "kon", "koff", "V", "dmito", "kmito", "inter"))
 
-inf.1.plot = ggplot(new.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
+inf.1.plot = ggplot(new.hist.set[new.hist.set$hist.ref != "Proximal",], aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
   geom_bar(position = position_dodge2(preserve = "single"), alpha=0.8) + 
   scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
   facet_wrap(~name, scales = "free", nrow = 2) +
@@ -667,18 +696,21 @@ dev.off()
 
 # do the inference across experiments
 all.hist.set = data.frame()
-delta = 0.5
+delta = 0.1
 for(this.expt in glab.set) {
   mean.x = mean(expts.df$mean.min.dist[expts.df$glabel==this.expt])
   mean.y = mean(expts.df$mean.degree[expts.df$glabel==this.expt])
   
   # subset simulations close to this
   # previously we built "mins", a dataframe of simulations on the Pareto front
-  inv.set = samples[abs(samples$meanmin-mean.x) < delta & abs(samples$meanedges-mean.y) < delta,]
+  #inv.set = samples[abs(samples$meanmin-mean.x) < delta & abs(samples$meanedges-mean.y) < delta,]
+  inv.set = means.df[abs(means.df$meanmin-mean.x) < delta & 
+                       abs(means.df$meanedges-mean.y) < delta &
+                       !is.na(means.df$meanmin) & !is.na(means.df$meanedges),]
   inv.set$hist.ref = this.expt
   inv.set$stat = 0
   
-  new.inv.set = inv.set %>% pivot_longer(cols=c("D", "kon", "koff", "V", "dmito", "kmito", "inter"))
+  new.inv.set = inv.set %>% pivot_longer(cols=c("D", "alpha", "kon", "koff", "V", "dmito", "kmito", "inter"))
   all.hist.set = rbind(all.hist.set, new.inv.set)
 }
 
@@ -712,6 +744,7 @@ p.list = list(
   baseplot + geom_point(aes(color=Cx*Cy), alpha = 0.2), 
   baseplot + geom_point(aes(color=inter), alpha=p.alpha, size=p.size), 
   baseplot + geom_point(aes(color=D), alpha=p.alpha, size=p.size),
+  baseplot + geom_point(aes(color=alpha), alpha=p.alpha, size=p.size),
   baseplot + geom_point(aes(color=V), alpha=p.alpha, size=p.size), 
   baseplot + geom_point(aes(color=dmito), alpha=p.alpha, size=p.size), 
   baseplot + geom_point(aes(color=kmito), alpha=p.alpha, size=p.size),

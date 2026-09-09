@@ -7,6 +7,7 @@
 // parameter set for a simulation
 typedef struct {
   double Cx, Cy;
+  double alpha;
   int Cn;
   double D, kon, koff, rhoon, rhooff, activep, V, dmito, kmito, inter;
 } Params;
@@ -144,7 +145,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 	      if(active[i])
 		{
 		  ix = iy = 0;
-		  // apply "hydrodynamic" interactions if appropriate
+		  // apply attraction/repulsion to nearby centre of mass if appropriate
 		  if(P.inter)
 		    {
 		      idx = 0; idy = 0;
@@ -166,8 +167,15 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		    {
 		      // on to ballistic motion
 		      // choose horizontal or vertical motion randomly
-		      if(RND < 0.5) { dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V; dy[i] = 0; }
-		      else { dx[i] = 0; dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V; }
+		      if(RND < 0.5) {
+			dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V;
+			dy[i] = 0;
+			y[i] = roundf(y[i] / P.alpha) * P.alpha;
+		      } else {
+			dx[i] = 0;
+			dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V;
+			x[i] = roundf(x[i] / P.alpha) * P.alpha;
+		      }
 		    }
 		  else if((dx[i] != 0 || dy[i] != 0) && RND < P.koff)
 		    {
@@ -274,12 +282,13 @@ int main(int argc, char *argv[])
 
   sprintf(fname, "outstatsscan-%i.csv", seed);
   fp= fopen(fname, "w");
-  fprintf(fp, "seed,D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
+  fprintf(fp, "seed,alpha,D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
   fclose(fp);
 
   // for the small set here we're looking at 13.5k simulations -- a couple of minutes
   P.rhoon = 1; P.rhooff = 0; P.activep = 1;
   // first, parameters with experimental bounds
+  for(P.alpha = 1; P.alpha <= 16; P.alpha *= 2) {
   for(P.D = 0.0; P.D <= 0.21; P.D *= 2) {
     for(P.V = 0.; P.V <= 2.6; P.V *= 2) {
       // now parameters with no bounds or guessed ranges
@@ -294,7 +303,7 @@ int main(int argc, char *argv[])
 		  // enforce maximum diffusion rate
 		  if(P.kmito * P.D <= 0.2)
 		    {
-		      printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
+		      printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.alpha, P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
 		      sprintf(str, "expt-0.csv");
 		      fp= fopen(fname, "a");
 		      for(i = 0; i < ns; i++)
@@ -304,7 +313,7 @@ int main(int argc, char *argv[])
 			  P.Cy = RND*100;
 			  P.Cn = RND*200;
 			  AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
-			  fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
+			  fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.alpha, P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
 			}
 		      expt++;
 		      fclose(fp);
@@ -320,11 +329,12 @@ int main(int argc, char *argv[])
     }
     if(P.D == 0) P.D = 0.025;
   }
+  }
 
   // here we go through a collection of specifically-chosen parameterisations, simulating behaviour and outputting trajectories to files
 
   P.Cx = 100; P.Cy = 30; P.Cn = 140;
-  
+  P.alpha = 1;
   P.inter = 0;
   expt = 0; ns = 10;
   // 0
@@ -385,6 +395,14 @@ int main(int argc, char *argv[])
   AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex2.csv"); expt++;
   P.D = 0.0; P.inter = -20; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 8; P.kmito = 2; P.Cx = 140.0; P.Cy = 45.4; P.Cn = 120;
   AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex3.csv"); expt++;
+
+  // cytoskeleton granularity
+  P.D = 0.0; P.inter = 0; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 8; P.kmito = 2; P.Cx = 140.0; P.Cy = 45.4; P.Cn = 120; P.alpha = 8;
+  AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test12.csv"); expt++;
+  
+  // cytoskeleton granularity, interaction
+  P.D = 0.0; P.inter = 20; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 8; P.kmito = 2; P.Cx = 140.0; P.Cy = 45.4; P.Cn = 120; P.alpha = 20;
+  AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test13.csv"); expt++;
     
   sprintf(fname, "outstats-%i.csv", seed);
   fp= fopen(fname, "w");
