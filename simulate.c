@@ -282,8 +282,9 @@ int main(int argc, char *argv[])
   
   // diffusion is 0.1um2 s-1, frame is 2s, so 0.2um2 frame-1
   // from Chustecki et al. 2021, log (speed / um s-1) is between -4 and 0
-  // hence max speed around 1 um s-1 = 2 um frame-1; say average about 1 um frame -1 
-  
+  // hence max speed around 1 um s-1 = 2 um frame-1; say average about 1 um frame -1
+
+  double framespersec = 2;
   double scaled = 0.2, scalev = 1;
 
   // big parameter sweep of system
@@ -311,7 +312,8 @@ int main(int argc, char *argv[])
 		  // enforce maximum diffusion rate
 		  if(P.kmito * P.D <= 0.2)
 		    {
-		      printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.alpha, P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i);
+		      // report these values in units of s^-1, not frame^-1
+		      printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.alpha, P.D/framespersec, P.inter, P.kon/framespersec, P.koff/framespersec, P.V/framespersec, P.dmito, P.kmito, expt, i);
 		      sprintf(str, "expt-0.csv");
 		      fp= fopen(fname, "a");
 		      for(i = 0; i < ns; i++)
@@ -321,7 +323,8 @@ int main(int argc, char *argv[])
 			  P.Cy = RND*100;
 			  P.Cn = RND*200;
 			  AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
-			  fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.alpha, P.D, P.inter, P.kon, P.koff, P.V, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
+			  // report these values in units of s^-1, not frame^-1
+			  fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.alpha, P.D/framespersec, P.inter, P.kon/framespersec, P.koff/framespersec, P.V/framespersec, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
 			}
 		      expt++;
 		      fclose(fp);
