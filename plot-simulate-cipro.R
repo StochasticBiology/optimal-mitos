@@ -682,7 +682,7 @@ inv.set.x2$hist.ref = "P-Clumped"
 mins$stat = 0
 inv.set$stat = 0
 
-# XXX CHECK SIGN OF INTER!!!
+# inter is negative for attraction, positive for repulsion
 hist.set = rbind(samples, mins, inv.set.x1, inv.set.x2) #, inv.set)
 new.hist.set = hist.set %>% pivot_longer(cols=c("D", "alpha", "kon", "koff", "V", "dmito", "kmito", "inter"))
 new.hist.set$hist.ref = factor(new.hist.set$hist.ref,

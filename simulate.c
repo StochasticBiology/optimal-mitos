@@ -160,6 +160,9 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		      // when P.inter is tiny but nonzero, idx is presumably still zero? because only i=j fulfils conditional above?
 		      if(idx < 0) ix = -1*(P.inter < 0 ? -1 : 1); else if(idx > 0) ix = 1*(P.inter < 0 ? -1 : 1);
 		      if(idy < 0) iy = -1*(P.inter < 0 ? -1 : 1); else if(idy > 0) iy = 1*(P.inter < 0 ? -1 : 1);
+		      // idx is positive if i has greater x than average.
+		      // then if inter is positive, ix = 1*1 = positive and I move away from the average
+		      // if inter is negative, ix = 1*-1 = negative and I move towards the average
 		      //	  printf("%e %e %e %e\n", idx, idy, ix, iy);
 		    }
 		  // attach/detach from cytoskeleton
