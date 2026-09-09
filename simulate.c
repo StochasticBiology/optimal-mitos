@@ -89,47 +89,50 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 	  dx[i] = dy[i] = 0;
 	  active[i] = (i < P.activep*n);
 	}
-      // loop over time scale (100 frames, each 2s)
+      // loop over time scale (100 frames burn in 100 frames measure, each 2s)
       timer = 0;
-      while(timer < 1e2)
+      while(timer < 200)
 	{
 	  timer++;
 
 	  for(i = 0; i < n; i++)
 	    scale[i] = 1;
-      
-	  // look for encounters
-	  for(i = 0; i < n; i++)
-	    {
-	      for(j = i+1; j < n; j++)
-		{
-		  if(active[i] && active[j])
-		    {
-		      // distance between i and j
-		      r2 = (x[i]-x[j])*(x[i]-x[j]) + (y[i]-y[j])*(y[i]-y[j]);
-		      // if we're below a threshold, scale motion accordingly
-		      if(r2 < P.dmito*P.dmito)
-			{
-			  scale[i] = P.kmito;
-			  scale[j] = P.kmito;
-			}
-		      // if we're below a threshold and haven't scored this encounter yet, do so
-		      if(am[i*n+j] == 0)
-			{
-			  if(r2 < thresh*thresh)
-			    {
-			      // populate encounter matrix and adj mat
-			      am[i*n+j] = am[j*n+i] = 1;
-			      if(output != 0 && sample == 0)
-				{
-				  fprintf(fp2, "%li,%i,%i\n", timer, i, j);
-				}
+
+	  if(timer >= 100) {
+	    // look for encounters
+	    for(i = 0; i < n; i++)
+	      {
+		for(j = i+1; j < n; j++)
+		  {
+		    if(active[i] && active[j])
+		      {
+			// distance between i and j
+			r2 = (x[i]-x[j])*(x[i]-x[j]) + (y[i]-y[j])*(y[i]-y[j]);
+			// if we're below a threshold, scale motion accordingly
+			if(r2 < P.dmito*P.dmito)
+			  {
+			    scale[i] = P.kmito;
+			    scale[j] = P.kmito;
+			  }
+			// if we're below a threshold and haven't scored this encounter yet, do so
+			if(am[i*n+j] == 0)
+			  {
+			    if(r2 < thresh*thresh)
+			      {
+				// populate encounter matrix and adj mat
+				am[i*n+j] = am[j*n+i] = 1;
+				if(output != 0 && sample == 0)
+				  {
+				    fprintf(fp2, "%li,%i,%i\n", timer-100, i, j);
+				  }
 			   
-			    }
-			}
-		    }
-		}
-	    }
+			      }
+			  }
+		      }
+		  }
+	      }
+	  }
+	  
 	  // put a uniform diffusion kernel on each position
 	  for(i = 0; i < n; i++)
 	    {
@@ -210,12 +213,14 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		  if(y[i] > cy) y[i] = cy;
 		}
 	    }
-	  // output state to file if desired
-	  if(output != 0 && sample == 0)
-	    {
-	      for(i = 0; i < n; i++)
-		fprintf(fp, "%li,%i,%.3f,%.3f\n", timer, i, x[i], y[i]);
-	    }
+	  if(timer >= 100) {
+	    // output state to file if desired
+	    if(output != 0 && sample == 0)
+	      {
+		for(i = 0; i < n; i++)
+		  fprintf(fp, "%li,%i,%.3f,%.3f\n", timer-100, i, x[i], y[i]);
+	      }
+	  }
 	}
 
       // record statistics of mean minimum distance and edges in adj mat
@@ -298,48 +303,48 @@ int main(int argc, char *argv[])
   P.rhoon = 1; P.rhooff = 0; P.activep = 1;
   // first, parameters with experimental bounds
   for(P.alpha = 1; P.alpha <= 16; P.alpha *= 2) {
-  for(P.D = 0.0; P.D <= 0.21; P.D *= 2) {
-    for(P.V = 0.; P.V <= 2.6; P.V *= 2) {
-      // now parameters with no bounds or guessed ranges
-      for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
-	for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
-	  for(P.dmito = 1; P.dmito <= 16.01; P.dmito *= 2) {
-	    for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
-	      for(interscale = 0; interscale <= 21; interscale *= 2) {
-		for(interdir = -1; interdir <= 1; interdir += 2) {
-		  if(interscale == 0) interdir = 1;
-		  P.inter = interscale*interdir;
-		  // enforce maximum diffusion rate
-		  if(P.kmito * P.D <= 0.2)
-		    {
-		      // report these values in units of s^-1, not frame^-1
-		      printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.alpha, P.D/framespersec, P.inter, P.kon/framespersec, P.koff/framespersec, P.V/framespersec, P.dmito, P.kmito, expt, i);
-		      sprintf(str, "expt-0.csv");
-		      fp= fopen(fname, "a");
-		      for(i = 0; i < ns; i++)
-			{
-			  // dimensions and density also have physical bounds but we just scan over a range
-			  P.Cx = RND*200;
-			  P.Cy = RND*100;
-			  P.Cn = RND*200;
-			  AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
-			  // report these values in units of s^-1, not frame^-1
-			  fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.alpha, P.D/framespersec, P.inter, P.kon/framespersec, P.koff/framespersec, P.V/framespersec, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
-			}
-		      expt++;
-		      fclose(fp);
-		    }
+    for(P.D = 0.0; P.D <= 0.21; P.D *= 2) {
+      for(P.V = 0.; P.V <= 2.6; P.V *= 2) {
+	// now parameters with no bounds or guessed ranges
+	for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
+	  for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
+	    for(P.dmito = 1; P.dmito <= 16.01; P.dmito *= 2) {
+	      for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
+		for(interscale = 0; interscale <= 21; interscale *= 2) {
+		  for(interdir = -1; interdir <= 1; interdir += 2) {
+		    if(interscale == 0) interdir = 1;
+		    P.inter = interscale*interdir;
+		    // enforce maximum diffusion rate
+		    if(P.kmito * P.D <= 0.2)
+		      {
+			// report these values in units of s^-1, not frame^-1
+			printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.alpha, P.D/framespersec, P.inter, P.kon/framespersec, P.koff/framespersec, P.V/framespersec, P.dmito, P.kmito, expt, i);
+			sprintf(str, "expt-0.csv");
+			fp= fopen(fname, "a");
+			for(i = 0; i < ns; i++)
+			  {
+			    // dimensions and density also have physical bounds but we just scan over a range
+			    P.Cx = RND*200;
+			    P.Cy = RND*100;
+			    P.Cn = RND*200;
+			    AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
+			    // report these values in units of s^-1, not frame^-1
+			    fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.alpha, P.D/framespersec, P.inter, P.kon/framespersec, P.koff/framespersec, P.V/framespersec, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
+			  }
+			expt++;
+			fclose(fp);
+		      }
+		  }
+		  if(interscale == 0) interscale = 2.5;
 		}
-		if(interscale == 0) interscale = 2.5;
 	      }
 	    }
 	  }
 	}
+	if(P.V == 0) P.V = 0.1;
       }
-      if(P.V == 0) P.V = 0.1;
+      if(P.D == 0) P.D = 0.025;
     }
-    if(P.D == 0) P.D = 0.025;
-  }
   }
 
   // here we go through a collection of specifically-chosen parameterisations, simulating behaviour and outputting trajectories to files
@@ -394,10 +399,10 @@ int main(int argc, char *argv[])
   AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test11.csv"); expt++;
 
   /* some specific examples of optimality taken after processing the output
-  seed    D inter  kon koff   V dmito kmito  expt sample         Cx        Cy  Cn
-    3 0.05     0 1.00 0.25 1.6     2   2.0 43106      0 110.758853 35.763588 177
-    1 0.00     5 1.00 0.25 1.6     8   4.0 21310      0 193.552076 52.484545 167
-    1 0.00   -20 1.00 0.25 1.6     8   2.0 21306      0 140.013995 45.416262 120
+     seed    D inter  kon koff   V dmito kmito  expt sample         Cx        Cy  Cn
+     3 0.05     0 1.00 0.25 1.6     2   2.0 43106      0 110.758853 35.763588 177
+     1 0.00     5 1.00 0.25 1.6     8   4.0 21310      0 193.552076 52.484545 167
+     1 0.00   -20 1.00 0.25 1.6     8   2.0 21306      0 140.013995 45.416262 120
   */
   
   P.D = 0.05; P.inter = 0; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 2; P.kmito = 2; P.Cx = 110.8; P.Cy = 35.8; P.Cn = 177;
