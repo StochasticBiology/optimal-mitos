@@ -41,6 +41,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
   double thresh = 1.6;          // encounter threshold
   int n = P.Cn;                 // number of mitos
   double idx, idy, ix, iy;
+  double diffx, diffy;
   double *x, *y;
   double *dx, *dy;
   int *active;
@@ -156,8 +157,13 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 			{
 			  if((x[i]-x[j])*(x[i]-x[j]) + (y[i]-y[j])*(y[i]-y[j]) < fabs(P.inter))
 			    {
-			      idx += (x[i]-x[j]);
-			      idy += (y[i]-y[j]);
+			      diffx = (x[i]-x[j]);
+			      diffy = (y[i]-y[j]);
+			      idx += diffx;
+			      idy += diffy;
+			      if(diffx == 0 || diffy == 0) {
+				x[i] += gsl_ran_gaussian(0.5); y[i] += gsl_ran_gaussian(0.5);
+			      }
 			    }
 			}
 		      // when P.inter is tiny but nonzero, idx is presumably still zero? because only i=j fulfils conditional above?
@@ -207,10 +213,10 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		      y[i] += dy[i]*scale[i];
 		    }
 		  // reflecting boundaries
-		  if(x[i] < 0) x[i] = 0;
-		  if(x[i] > cx) x[i] = cx;
-		  if(y[i] < 0) y[i] = 0;
-		  if(y[i] > cy) y[i] = cy;
+		  if(x[i] < 0) x[i] = -x[i];
+		  if(x[i] > cx) x[i] = x[i]-cx;
+		  if(y[i] < 0) y[i] = -y[i];
+		  if(y[i] > cy) y[i] = y[i]-cy;
 		}
 	    }
 	  if(timer >= 100) {

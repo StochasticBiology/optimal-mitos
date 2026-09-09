@@ -585,7 +585,7 @@ for(glab in glab.set) {
 plot.dists = rbind(null.dists.df, expt.dists.df)
 
 plot.dists$label = factor(plot.dists$label, levels=c(glab.set, "All"))
-plot.dists = plot.dists[plot.dists$d > 0,]
+plot.dists = plot.dists[plot.dists$d > 0 & !is.infinite(plot.dists$d),]
 
 dist.colors = c(viridis::viridis(5, option="inferno"), "#AAAAAA")
 g.dist.hyp = ggplot(plot.dists, aes(x=label, y=log(d), fill=label)) + 
@@ -670,17 +670,19 @@ mean.y = mean(expts.df$mean.degree[expts.df$glabel=="WT"])
 # subset simulations close to this
 # previously we built "mins", a dataframe of simulations on the Pareto front
 delta = 4
+mins$stat = 0
+
 inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
 inv.set.x1 = mins[log(1/mins$meanmin) < -2.5,]
 inv.set.x2 = mins[log(1/mins$meanmin) > 0.5,]
+
 samples$hist.ref = "All"
 mins$hist.ref = "Pareto (P)"
 inv.set.x1$hist.ref = "P-Lonely"
 inv.set.x2$hist.ref = "P-Clumped"
 
 #inv.set$hist.ref = "Proximal"
-mins$stat = 0
-inv.set$stat = 0
+
 
 # inter is negative for attraction, positive for repulsion
 hist.set = rbind(samples, mins, inv.set.x1, inv.set.x2) #, inv.set)
@@ -703,7 +705,7 @@ dev.off()
 
 # do the inference across experiments
 all.hist.set = data.frame()
-delta = 0.1
+delta = 0.05
 for(this.expt in glab.set) {
   mean.x = mean(expts.df$mean.min.dist[expts.df$glabel==this.expt])
   mean.y = mean(expts.df$mean.degree[expts.df$glabel==this.expt])
