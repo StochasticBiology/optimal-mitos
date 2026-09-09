@@ -197,8 +197,8 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		  // apply diffusion kernel if we're not ballistic
 		  if(dx[i] == 0 && dy[i] == 0)
 		    {
-		      x[i] += (gsl_ran_gaussian(2.*P.D)+ix*P.D)*scale[i];
-		      y[i] += (gsl_ran_gaussian(2.*P.D)+iy*P.D)*scale[i];
+		      x[i] += (gsl_ran_gaussian(sqrt(2.*P.D))+ix*P.D)*scale[i];
+		      y[i] += (gsl_ran_gaussian(sqrt(2.*P.D))+iy*P.D)*scale[i];
 		    }
 		  // otherwise ballistic motion
 		  else
