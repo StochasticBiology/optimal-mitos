@@ -473,7 +473,7 @@ g.all.1.alt
 
 # plot zoomed-in version
 g.all.2 = ggplot() +
-  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=10) +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=2) +
   scale_color_viridis() +
   geom_point(data=expts.df[expts.df$frame==key.frame,], 
              aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=2, shape=21) + 
@@ -481,7 +481,7 @@ g.all.2 = ggplot() +
   theme_minimal() + xlim(-1.5,0) + ylim(-2.5, -0.75) + theme(legend.position = "none")
 
 g.all.2.alt = ggplot() +
-  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=10) +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=2) +
   scale_color_viridis() +
   geom_point(data=expts.df[expts.df$frame==key.frame,], 
              aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), stroke = 0.2, size=2, shape=21) + 
@@ -671,19 +671,26 @@ mean.y = mean(expts.df$mean.degree[expts.df$glabel=="WT"])
 # previously we built "mins", a dataframe of simulations on the Pareto front
 delta = 4
 inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
+inv.set.x1 = mins[log(1/mins$meanmin) < -2.5,]
+inv.set.x2 = mins[log(1/mins$meanmin) > 0.5,]
 samples$hist.ref = "All"
-mins$hist.ref = "Pareto"
+mins$hist.ref = "Pareto (P)"
+inv.set.x1$hist.ref = "P-Lonely"
+inv.set.x2$hist.ref = "P-Clumped"
+
 #inv.set$hist.ref = "Proximal"
 mins$stat = 0
 inv.set$stat = 0
 
-# XXX cols bugs here
-hist.set = rbind(samples, mins) #, inv.set)
+# XXX CHECK SIGN OF INTER!!!
+hist.set = rbind(samples, mins, inv.set.x1, inv.set.x2) #, inv.set)
 new.hist.set = hist.set %>% pivot_longer(cols=c("D", "alpha", "kon", "koff", "V", "dmito", "kmito", "inter"))
-
+new.hist.set$hist.ref = factor(new.hist.set$hist.ref,
+                               levels = c("All", "Pareto (P)", "P-Clumped", "P-Lonely"))
 inf.1.plot = ggplot(new.hist.set[new.hist.set$hist.ref != "Proximal",], aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
   geom_bar(position = position_dodge2(preserve = "single"), alpha=0.8) + 
-  scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
+  #scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
+  scale_fill_viridis_d(option="magma", end=0.8) +
   facet_wrap(~name, scales = "free", nrow = 2) +
   labs(x = "", y="", fill = "Subset of\nmorphospace") +
   theme_minimal()

@@ -166,15 +166,20 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		  if(dx[i] == 0 && dy[i] == 0 && RND < P.kon)
 		    {
 		      // on to ballistic motion
-		      // choose horizontal or vertical motion randomly
+		      // snap to a cytoskeletal strand
+		      // choose horizontal or vertical motion based on position of this strand
 		      if(RND < 0.5) {
-			dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V;
-			dy[i] = 0;
+			int k = (int)roundf(y[i] / P.alpha);
 			y[i] = roundf(y[i] / P.alpha) * P.alpha;
+			dx[i] = P.V*((k % 2 == 0) ? 1 : -1);
+			//			dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V;
+			dy[i] = 0;
 		      } else {
-			dx[i] = 0;
-			dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V;
+			int k = (int)roundf(x[i] / P.alpha);
 			x[i] = roundf(x[i] / P.alpha) * P.alpha;
+			dx[i] = 0;
+			//dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V;
+			dy[i] = P.V*((k % 2 == 0) ? 1 : -1);
 		      }
 		    }
 		  else if((dx[i] != 0 || dy[i] != 0) && RND < P.koff)
