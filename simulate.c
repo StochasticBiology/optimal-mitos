@@ -182,16 +182,16 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		      // choose horizontal or vertical motion based on position of this strand
 		      if(RND < 0.5) {
 			int k = (int)roundf(y[i] / P.alpha);
-			y[i] = roundf(y[i] / P.alpha) * P.alpha;
-			dx[i] = P.V*((k % 2 == 0) ? 1 : -1);
+			y[i] = roundf(y[i] / P.alpha) * P.alpha + gsl_ran_gaussian(0.5);
+			dx[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
 			//			dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V;
 			dy[i] = 0;
 		      } else {
 			int k = (int)roundf(x[i] / P.alpha);
-			x[i] = roundf(x[i] / P.alpha) * P.alpha;
+			x[i] = roundf(x[i] / P.alpha) * P.alpha + gsl_ran_gaussian(0.5);
 			dx[i] = 0;
 			//dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V;
-			dy[i] = P.V*((k % 2 == 0) ? 1 : -1);
+			dy[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
 		      }
 		    }
 		  else if((dx[i] != 0 || dy[i] != 0) && RND < P.koff)
@@ -310,10 +310,10 @@ int main(int argc, char *argv[])
   // first, parameters with experimental bounds
   for(P.alpha = 1; P.alpha <= 16; P.alpha *= 2) {
     for(P.D = 0.0; P.D <= 0.21; P.D *= 2) {
-      for(P.V = 0.; P.V <= 2.6; P.V *= 2) {
+      for(P.V = 0.; P.V <= 3.3; P.V *= 2) {
 	// now parameters with no bounds or guessed ranges
-	for(P.kon = 0; P.kon <= 1.01; P.kon += 0.25) {
-	  for(P.koff = 0; P.koff <= 1.01; P.koff += 0.25) {
+	for(P.kon = 0; P.kon <= 0.51; P.kon += 0.125) {
+	  for(P.koff = 0; P.koff <= 0.51; P.koff += 0.125) {
 	    for(P.dmito = 1; P.dmito <= 16.01; P.dmito *= 2) {
 	      for(P.kmito = 0.25; P.kmito <= 4.01; P.kmito *= 2) {
 		for(interscale = 0; interscale <= 21; interscale *= 2) {
