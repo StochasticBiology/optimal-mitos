@@ -451,11 +451,11 @@ int main(int argc, char *argv[])
 	 1061679    3    16 0.000     5 0.188 0.062 0.8     8     2 317928      0 110.4823 94.46128 174 3.245697  5.885057 -1.177330 -1.772416
       */
   
-      P.D = 0.025/framespersec; P.inter = 10; P.kon = 0.188/framespersec; P.koff = 0.062/framespersec; P.V = 0.8/framespersec; P.dmito = 16; P.kmito = 4; P.Cx = 149.6; P.Cy = 61.4; P.Cn = 181;
+      P.alpha = 16; P.D = 0.025/framespersec; P.inter = 10; P.kon = 0.188/framespersec; P.koff = 0.062/framespersec; P.V = 0.8/framespersec; P.dmito = 16; P.kmito = 4; P.Cx = 149.6; P.Cy = 61.4; P.Cn = 181;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex1.csv"); expt++;
-      P.D = 0.050/framespersec;  P.inter = -20; P.kon = 0.25/framespersec; P.koff = 0.62/framespersec; P.V = 0.8/framespersec; P.dmito = 16; P.kmito = 2; P.Cx = 109.5; P.Cy = 75.5; P.Cn = 128;
+      P.alpha = 16; P.D = 0.050/framespersec;  P.inter = -20; P.kon = 0.25/framespersec; P.koff = 0.62/framespersec; P.V = 0.8/framespersec; P.dmito = 16; P.kmito = 2; P.Cx = 109.5; P.Cy = 75.5; P.Cn = 128;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex2.csv"); expt++;
-      P.D = 0.000/framespersec;  P.inter = 5; P.kon = 0.188/framespersec; P.koff = 0.62/framespersec; P.V = 0.8/framespersec; P.dmito = 8; P.kmito = 2; P.Cx = 110.5; P.Cy = 94.5; P.Cn = 174;
+      P.alpha = 16; P.D = 0.000/framespersec;  P.inter = 5; P.kon = 0.188/framespersec; P.koff = 0.62/framespersec; P.V = 0.8/framespersec; P.dmito = 8; P.kmito = 2; P.Cx = 110.5; P.Cy = 94.5; P.Cn = 174;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex3.csv"); expt++;
 
       // cytoskeleton granularity
