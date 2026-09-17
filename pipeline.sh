@@ -21,6 +21,9 @@ done
 # run simulations
 cd ..
 gcc -o3 simulate.c -lm -o simulate.ce
+# given parameter sets
+./simulate.ce 0 > tmp0 &
+# parameter scans (take ~hours)
 ./simulate.ce 1 > tmp1 &
 ./simulate.ce 2 > tmp2 &
 ./simulate.ce 3 > tmp3 &

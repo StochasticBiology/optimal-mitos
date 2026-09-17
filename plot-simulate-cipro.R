@@ -372,13 +372,14 @@ for(i in 1:length(nice.g)) {
 }
 
 # pull a collection together for visualisation
-g.all.1 = ggarrange(g1a[[4]], g1a[[10]], g1a[[8]], g1a[[5]], nrow=1, labels=c("A", "B", "C", "D"))
-g.all.2 = ggarrange(plotlist=cell.vis, nrow=1, labels=c("E", "F", "G", "H"))
-g.all.3 = ggarrange(g3[[4]], g3[[10]], g3[[8]], g3[[5]], nrow=1)
-g.all.4 = ggarrange(plotlist = am.vis, nrow=1)
+g.all.1 = ggarrange(g1a[[4]], g1a[[10]], g1a[[14]], g1a[[5]], nrow=1, labels=c("Ai", " ii", "iii", "iv"),
+                    font.label = list(size = 20, color = "white", face = "bold"), label.x = 0.03,  label.y = 0.95)
+g.all.2 = ggarrange(plotlist=cell.vis, nrow=1, labels=c(" v", " vi", "vii", "viii"), font.label = list(size = 20, color = "white", face = "bold"), label.x = 0.03,  label.y = 0.95)
+g.all.3 = ggarrange(g3[[4]], g3[[10]], g3[[14]], g3[[5]], nrow=1,  labels=c("Bi", "ii", "iii", "iv"), font.label = list(size = 20, face = "bold"))
+g.all.4 = ggarrange(plotlist = am.vis, nrow=1, labels=c("v", "vi", "vii", "viii"), font.label = list(size = 20, face = "bold"))
 
 
-ggarrange(g1a[[5]], cell.vis[[1]], g3[[5]], am.vis[[1]], nrow=2, ncol=2 )
+#ggarrange(g1a[[5]], cell.vis[[1]], g3[[5]], am.vis[[1]], nrow=2, ncol=2 )
 
 sf = 2
 mypng(protocol, "all-demo-image.png", width=1200*sf, height=450*sf, res=72*sf)
@@ -428,7 +429,7 @@ for(glab in glab.set) {
                  aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), 
                  color="red") +
       theme_light() + theme(legend.position = "none") + 
-      xlab("Physical clumping (log 1/meanmin)") + ylab("Exchange isolation (log 1/meanedges)") +
+      xlab("Clumping") + ylab("Isolation") +
       ggtitle(titlestr)
     
     
@@ -436,7 +437,7 @@ for(glab in glab.set) {
 }
 
 # construct megaplot of each of these
-mypng(protocol, paste0("ind-trajs.png", collapse=""), width=1000*sf, height=2000*sf, res=72*sf)
+mypng(protocol, paste0("ind-trajs.png", collapse=""), width=1500*sf, height=2000*sf, res=72*sf)
 ggarrange(plotlist = complist)
 dev.off()
 
@@ -473,7 +474,7 @@ g.all.1.alt
 
 # plot zoomed-in version
 g.all.2 = ggplot() +
-  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=10) +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=2) +
   scale_color_viridis() +
   geom_point(data=expts.df[expts.df$frame==key.frame,], 
              aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), size=2, shape=21) + 
@@ -481,7 +482,7 @@ g.all.2 = ggplot() +
   theme_minimal() + xlim(-1.5,0) + ylim(-2.5, -0.75) + theme(legend.position = "none")
 
 g.all.2.alt = ggplot() +
-  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=10) +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=0.25, size=2) +
   scale_color_viridis() +
   geom_point(data=expts.df[expts.df$frame==key.frame,], 
              aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), stroke = 0.2, size=2, shape=21) + 
@@ -585,7 +586,7 @@ for(glab in glab.set) {
 plot.dists = rbind(null.dists.df, expt.dists.df)
 
 plot.dists$label = factor(plot.dists$label, levels=c(glab.set, "All"))
-plot.dists = plot.dists[plot.dists$d > 0,]
+plot.dists = plot.dists[plot.dists$d > 0 & !is.infinite(plot.dists$d),]
 
 dist.colors = c(viridis::viridis(5, option="inferno"), "#AAAAAA")
 g.dist.hyp = ggplot(plot.dists, aes(x=label, y=log(d), fill=label)) + 
@@ -669,30 +670,52 @@ mean.y = mean(expts.df$mean.degree[expts.df$glabel=="WT"])
 
 # subset simulations close to this
 # previously we built "mins", a dataframe of simulations on the Pareto front
-delta = 4
-inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
-samples$hist.ref = "All"
-mins$hist.ref = "Pareto"
-#inv.set$hist.ref = "Proximal"
+delta = 1
 mins$stat = 0
-inv.set$stat = 0
 
-# XXX cols bugs here
-hist.set = rbind(samples, mins) #, inv.set)
-new.hist.set = hist.set %>% pivot_longer(cols=c("D", "alpha", "kon", "koff", "V", "dmito", "kmito", "inter"))
+inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
+inv.set.x1 = mins[log(1/mins$meanmin) < -2.1,]
+inv.set.x2 = mins[log(1/mins$meanmin) > -1.5,]
 
-inf.1.plot = ggplot(new.hist.set[new.hist.set$hist.ref != "Proximal",], aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
+samples$hist.ref = "All"
+mins$hist.ref = "Pareto (P)"
+inv.set.x1$hist.ref = "P-Lonely"
+inv.set.x2$hist.ref = "P-Clumped"
+
+#inv.set$hist.ref = "Proximal"
+
+
+# inter is negative for attraction, positive for repulsion
+hist.set = rbind(samples, mins, inv.set.x1, inv.set.x2) #, inv.set)
+hist.set$density = hist.set$Cn / (hist.set$Cx*hist.set$Cy)
+hist.set$area = (hist.set$Cx*hist.set$Cy)
+hist.set$xyratio = hist.set$Cx/hist.set$Cy
+hist.set$kratio = hist.set$kon/hist.set$koff
+
+set.1 = c("D", "alpha", "kon", "koff", "V", "dmito", "kmito", "inter")
+set.2 = c("area", "density", "kratio", "xyratio")
+
+new.hist.set = hist.set %>% pivot_longer(cols=c(set.1, set.2))
+new.hist.set$hist.ref = factor(new.hist.set$hist.ref,
+                               levels = c("All", "Pareto (P)", "P-Clumped", "P-Lonely"))
+
+
+
+inf.1a.plot = ggplot(new.hist.set[new.hist.set$name %in% set.1,], aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
   geom_bar(position = position_dodge2(preserve = "single"), alpha=0.8) + 
-  scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
+  #scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
+  scale_fill_viridis_d(option="magma", end=0.8) +
   facet_wrap(~name, scales = "free", nrow = 2) +
   labs(x = "", y="", fill = "Subset of\nmorphospace") +
   theme_minimal()
-
-# plot parameters in each class of closeness
-sf = 2
-mypng(protocol, "inference.png", width=600*sf, height=200*sf, res=72*sf)
-print(inf.1.plot)
-dev.off()
+inf.1b.plot = ggplot(new.hist.set[new.hist.set$name %in% set.2,], aes(x=value, group =hist.ref, fill=hist.ref)) +
+  geom_density(alpha=0.4) + 
+  scale_x_log10() +
+  #scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
+  scale_fill_viridis_d(option="magma", end=0.8) +
+  facet_wrap(~name, scales = "free", nrow = 2) +
+  labs(x = "", y="", fill = "Subset of\nmorphospace") +
+  theme_minimal()
 
 # do the inference across experiments
 all.hist.set = data.frame()
@@ -709,28 +732,47 @@ for(this.expt in glab.set) {
                        !is.na(means.df$meanmin) & !is.na(means.df$meanedges),]
   inv.set$hist.ref = this.expt
   inv.set$stat = 0
-  
-  new.inv.set = inv.set %>% pivot_longer(cols=c("D", "alpha", "kon", "koff", "V", "dmito", "kmito", "inter"))
+  inv.set$area = inv.set$Cx*inv.set$Cy
+  inv.set$density = inv.set$Cn / (inv.set$Cx*inv.set$Cy)
+  inv.set$xyratio = inv.set$Cx/inv.set$Cy
+  inv.set$kratio = inv.set$kon/inv.set$koff
+  new.inv.set = inv.set %>% pivot_longer(cols=c(set.1, set.2))
   all.hist.set = rbind(all.hist.set, new.inv.set)
 }
 
 # plot parameters in each class of closeness
 sf = 2
 all.hist.set$hist.ref = factor(all.hist.set$hist.ref, levels=c("WT", "msh1", "friendly", "cipro", "msh1-cipro"))
-inf.2.plot = ggplot(all.hist.set, aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
+inf.2a.plot = ggplot(all.hist.set[all.hist.set$name %in% set.1,], aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
   geom_bar(position = position_dodge2(preserve = "single"), alpha=0.8) + 
   facet_wrap(~name, scales = "free", nrow = 2) +
   scale_fill_viridis_d(option="magma", end=0.9) +
   labs(x = "", y="", fill = "Experiment") +
   theme_minimal()
-inf.2.plot
-mypng(protocol, "all-inference.png", width=600*sf, height=200*sf, res=72*sf)
-print(inf.2.plot)
+inf.2b.plot = ggplot(all.hist.set[all.hist.set$name %in% set.2,], aes(x=value, group =hist.ref, fill=hist.ref)) +
+  geom_density(alpha=0.4) +
+  scale_x_log10() +
+  facet_wrap(~name, scales = "free", nrow = 2) +
+  scale_fill_viridis_d(option="magma", end=0.9) +
+  labs(x = "", y="", fill = "Experiment") +
+  theme_minimal()
+
+x.text = theme(axis.text.x = element_text(angle=45, hjust=1, size=8))
+mypng(protocol, "all-inference-both.png", width=800*sf, height=400*sf, res=72*sf)
+ggarrange(inf.2a.plot+x.text+theme(legend.position="none"), inf.2b.plot+x.text,
+          inf.1a.plot+x.text+theme(legend.position="none"), inf.1b.plot+x.text,
+          nrow=2, ncol=2,
+          widths=c(1.5,1), labels=c("A", "", "B", ""))
 dev.off()
 
+
 mypng(protocol, "all-inference-both.png", width=600*sf, height=400*sf, res=72*sf)
-print(ggarrange(inf.1.plot, inf.2.plot, nrow=2, labels=c("A", "B")))
+print(ggarrange(inf.2.plot, inf.1.plot, nrow=2, labels=c("A", "B")))
 dev.off()
+
+# grab some example optimal parameterisations
+colnames(mins)
+mins[mins$y > -2 & mins$y < -1.5,]
 
 #### TASK 10: parameter determinants of Pareto front
 
