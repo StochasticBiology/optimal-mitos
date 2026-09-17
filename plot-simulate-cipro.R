@@ -122,7 +122,7 @@ dev.off()
 
 #### TASK 1a: illustrations for post-identified optimal parameters
 opt.g1 = opt.g1a = opt.g3 = list()
-for(expt in 1:3) {
+for(expt in 1:4) {
   # read trajectories
   fname = paste(c("optex", expt, ".csv"), collapse="")
   traj.df = read.csv(fname)
@@ -156,9 +156,10 @@ for(expt in 1:3) {
     theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
 }
 
-png("optimal-demos.png", width=600*sf, height=400*sf, res=72*sf)
-ggarrange(opt.g1a[[1]], opt.g1a[[2]], opt.g1a[[3]], opt.g3[[1]], opt.g3[[2]], opt.g3[[3]],
-          nrow=2, ncol=3, heights=c(1.6,1), labels=c("A", "B", "C"))
+png("optimal-demos.png", width=800*sf, height=400*sf, res=72*sf)
+ggarrange(opt.g1a[[1]], opt.g1a[[2]], opt.g1a[[3]], opt.g1a[[4]],
+          opt.g3[[1]], opt.g3[[2]], opt.g3[[3]], opt.g3[[4]],
+          nrow=2, ncol=4, heights=c(1.6,1), labels=c("A", "B", "C", "D"))
 dev.off()
 
 #### TASK 2: parameter scan through simulated dynamics
@@ -428,7 +429,7 @@ for(glab in glab.set) {
                                    expts.df$frame==key.frame,], 
                  aes(x = log(1/mean.min.dist), y=log(1/mean.degree)), 
                  color="red") +
-      theme_light() + theme(legend.position = "none") + 
+      theme_light() + theme(legend.position = "none", plot.title=element_text(size=6)) + 
       xlab("Clumping") + ylab("Isolation") +
       ggtitle(titlestr)
     
@@ -463,7 +464,8 @@ g.all.1 = ggplot() +
   theme_minimal()
 
 g.all.1.alt = ggplot() +
-  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & 
+                            samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
   scale_color_viridis() +
   geom_point(data=expts.df[expts.df$frame==key.frame,], 
              aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), stroke = 0.1, size=2, shape=21) + 
@@ -471,6 +473,20 @@ g.all.1.alt = ggplot() +
   labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
   theme_minimal()
 g.all.1.alt
+
+g.all.1.alt.no.k = ggplot() +
+  geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & 
+                            samples$kmito <= 1,], aes(x=x,y=y,color=log(stat)), alpha=1) +
+  scale_color_viridis() +
+  geom_point(data=expts.df[expts.df$frame==key.frame,], 
+             aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), stroke = 0.1, size=2, shape=21) + 
+  scale_fill_manual(values=col.set) +
+  labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
+  theme_minimal()
+
+mypng(protocol, "pareto-without-k.png", width=400*sf, height=400*sf, res=72*sf)
+print(g.all.1.alt.no.k)
+dev.off()
 
 # plot zoomed-in version
 g.all.2 = ggplot() +
@@ -625,7 +641,7 @@ wilcox.test(plot.dists$d[plot.dists$label=="msh1"], plot.dists$d[plot.dists$labe
 #### still a WIP
 nsamp = nrow(stats.df[stats.df$expt == 1,])
 
-set.seed(1)
+set.seed(10)
 eref = sample(1:max(stats.df$expt), 30)
 polys.df = ellipses.df = data.frame()
 for(e in eref) {
@@ -633,12 +649,14 @@ for(e in eref) {
   sub$x = log(1/sub$meanmin)
   sub$y = log(1/sub$meanedges)
   sub = sub[is.finite(sub$x) & is.finite(sub$y),]
+  if(nrow(sub) > 2) {
   hull = chull(sub$x, sub$y)
   tmp = data.frame(e = e, xs = sub$x[hull], ys = sub$y[hull])
   polys.df = rbind(polys.df, tmp)
   ellipses.df = rbind(ellipses.df, data.frame(e = e,
                                               x0=mean(sub$x), y0=mean(sub$y),
                                               a=sd(sub$x)/sqrt(nsamp), b=sd(sub$y)/sqrt(nsamp)))
+  }
 }
 
 g.set.1 = ggplot() + 
@@ -675,7 +693,7 @@ mins$stat = 0
 
 inv.set = mins[abs(mins$meanmin-mean.x) < delta & abs(mins$meanedges-mean.y) < delta,]
 inv.set.x1 = mins[log(1/mins$meanmin) < -2.1,]
-inv.set.x2 = mins[log(1/mins$meanmin) > -1.5,]
+inv.set.x2 = mins[log(1/mins$meanmin) > -1,]
 
 samples$hist.ref = "All"
 mins$hist.ref = "Pareto (P)"
@@ -750,7 +768,7 @@ inf.2a.plot = ggplot(all.hist.set[all.hist.set$name %in% set.1,], aes(x=factor(v
   labs(x = "", y="", fill = "Experiment") +
   theme_minimal()
 inf.2b.plot = ggplot(all.hist.set[all.hist.set$name %in% set.2,], aes(x=value, group =hist.ref, fill=hist.ref)) +
-  geom_density(alpha=0.4) +
+  geom_density(alpha=0.4, bw=0.05) +
   scale_x_log10() +
   facet_wrap(~name, scales = "free", nrow = 2) +
   scale_fill_viridis_d(option="magma", end=0.9) +
@@ -766,13 +784,9 @@ ggarrange(inf.2a.plot+x.text+theme(legend.position="none"), inf.2b.plot+x.text,
 dev.off()
 
 
-mypng(protocol, "all-inference-both.png", width=600*sf, height=400*sf, res=72*sf)
-print(ggarrange(inf.2.plot, inf.1.plot, nrow=2, labels=c("A", "B")))
-dev.off()
-
 # grab some example optimal parameterisations
 colnames(mins)
-mins[mins$y > -2 & mins$y < -1.5,]
+mins[mins$y > -2 & mins$y < -1.2,]
 
 #### TASK 10: parameter determinants of Pareto front
 
