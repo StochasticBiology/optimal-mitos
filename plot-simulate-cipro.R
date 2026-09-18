@@ -719,18 +719,20 @@ new.hist.set$hist.ref = factor(new.hist.set$hist.ref,
 
 
 
-inf.1a.plot = ggplot(new.hist.set[new.hist.set$name %in% set.1,], aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
+inf.1a.plot = ggplot(new.hist.set[new.hist.set$name %in% set.1 &
+                                    new.hist.set$hist.ref != "All",], aes(x=factor(value), y=..prop.., group =hist.ref, fill=hist.ref)) +
   geom_bar(position = position_dodge2(preserve = "single"), alpha=0.8) + 
   #scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
-  scale_fill_viridis_d(option="magma", end=0.8) +
+  scale_fill_viridis_d(option="mako", end=0.8) +
   facet_wrap(~name, scales = "free", nrow = 2) +
   labs(x = "", y="", fill = "Subset of\nmorphospace") +
   theme_minimal()
-inf.1b.plot = ggplot(new.hist.set[new.hist.set$name %in% set.2,], aes(x=value, group =hist.ref, fill=hist.ref)) +
+inf.1b.plot = ggplot(new.hist.set[new.hist.set$name %in% set.2 &
+                                    new.hist.set$hist.ref != "All",], aes(x=value, group =hist.ref, fill=hist.ref)) +
   geom_density(alpha=0.4) + 
   scale_x_log10() +
   #scale_fill_manual(values=c("#FFAAAA", "#AA5555", "#440000")) +
-  scale_fill_viridis_d(option="magma", end=0.8) +
+  scale_fill_viridis_d(option="mako", end=0.8) +
   facet_wrap(~name, scales = "free", nrow = 2) +
   labs(x = "", y="", fill = "Subset of\nmorphospace") +
   theme_minimal()

@@ -7,6 +7,7 @@
 #define _CYTOSKEL_SNAP 1
 #define _SPEED_DISTN 1
 #define _HARD_BOUNDARY 0
+#define _CYT_PROXIMITY 3.
 
 #define RND drand48()
 
@@ -191,20 +192,24 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 		      // choose horizontal or vertical motion based on position of this strand
 		      if(RND < 0.5) {
 			int k = (int)roundf(y[i] / P.alpha);
-			y[i] = roundf(y[i] / P.alpha) * P.alpha + gsl_ran_gaussian(0.5);
-			//dx[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
-			//dx[i] = P.V*((k % 2 == 0) ? 1 : -1);
-			//			dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V;
-			dx[i] = (P.inter && ix != 0 ? (ix > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? RND : 1.)*P.V;
-			dy[i] = 0;
+			if(fabs(y[i] - k*P.alpha) < _CYT_PROXIMITY) {
+  			  y[i] = k * P.alpha + gsl_ran_gaussian(0.5);
+			  //dx[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
+			  //dx[i] = P.V*((k % 2 == 0) ? 1 : -1);
+			  //			dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V;
+			  dx[i] = (P.inter && ix != 0 ? (ix > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? RND : 1.)*P.V;
+		  	  dy[i] = 0;
+			}
 		      } else {
 			int k = (int)roundf(x[i] / P.alpha);
-			x[i] = roundf(x[i] / P.alpha) * P.alpha + gsl_ran_gaussian(0.5);
-			//dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V;
-			//dy[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
-			//			dy[i] = P.V*((k % 2 == 0) ? 1 : -1);
-			dy[i] = (P.inter && iy != 0 ? (iy > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? RND : 1.)*P.V;
-			dx[i] = 0;
+			if(fabs(x[i] - k*P.alpha) < _CYT_PROXIMITY) {
+			  x[i] = roundf(x[i] / P.alpha) * P.alpha + gsl_ran_gaussian(0.5);
+			  //dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V;
+			  //dy[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
+			  //			dy[i] = P.V*((k % 2 == 0) ? 1 : -1);
+			  dy[i] = (P.inter && iy != 0 ? (iy > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? RND : 1.)*P.V;
+			  dx[i] = 0;
+			}
 		      }
 		    }
 		  else if((dx[i] != 0 || dy[i] != 0) && RND < P.koff)
@@ -339,8 +344,8 @@ int main(int argc, char *argv[])
     // for the small set here we're looking at 13.5k simulations -- a couple of minutes
     P.rhoon = 1; P.rhooff = 0; P.activep = 1;
     // first, parameters with experimental bounds
-    for(P.alpha = 1; P.alpha <= (_CYTOSKEL_SNAP ? 16 : 1); P.alpha *= 2) {
-      for(P.D = 0.0; P.D <= 0.21; P.D *= 2) {
+    for(P.alpha = 1; P.alpha <= (_CYTOSKEL_SNAP ? 32 : 1); P.alpha *= 2) {
+      for(P.D = 0.0; P.D <= 0.41; P.D *= 2) {
 	for(P.V = 0.; P.V <= 2.01; P.V *= 2) {
 	  // now parameters with no bounds or guessed ranges
 	  for(P.kon = 0; P.kon <= 0.51; P.kon += 0.125) {
@@ -445,21 +450,21 @@ int main(int argc, char *argv[])
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test11.csv"); expt++;
 
       /* some specific examples of optimality, taken after processing the output
-        seed alpha     D inter   kon  koff V dmito kmito   expt sample        Cx       Cy  Cn  meanmin meanedges
-	// optimal near bio
-209467     1     8 0.050   -20 0.250 0.062 1     1     1 209466      0 113.02317 47.61734 158 2.525649  7.329114
-222150     1     8 0.100    10 0.125 0.062 1     8     1 222149      0  20.46172 39.79724  33 2.470072  5.878788
-// optimal high social
-54907      1     1 0.100   -20 0.188 0.125 1.00     1   1.0  54906      0  92.03070 34.16352 199 1.634590 12.391960
-// optimal low social
-780234     3     8 0.100    20 0.250 0.188 0.50     1 0.250 220233      0 194.0806 91.68886  36 11.506866  0.027778
+	 seed alpha     D inter   kon  koff V dmito kmito   expt sample        Cx       Cy  Cn  meanmin meanedges
+	 // optimal near bio
+	 209467     1     8 0.050   -20 0.250 0.062 1     1     1 209466      0 113.02317 47.61734 158 2.525649  7.329114
+	 222150     1     8 0.100    10 0.125 0.062 1     8     1 222149      0  20.46172 39.79724  33 2.470072  5.878788
+	 // optimal high social
+	 54907      1     1 0.100   -20 0.188 0.125 1.00     1   1.0  54906      0  92.03070 34.16352 199 1.634590 12.391960
+	 // optimal low social
+	 780234     3     8 0.100    20 0.250 0.188 0.50     1 0.250 220233      0 194.0806 91.68886  36 11.506866  0.027778
       */
   
-         P.alpha = 8; P.D = 0.05/framespersec; P.inter = -20; P.kon = 0.250/framespersec; P.koff = 0.062/framespersec; P.V = 1./framespersec; P.dmito = 1; P.kmito = 1; P.Cx = 113.0; P.Cy = 47.6; P.Cn = 158;
+      P.alpha = 8; P.D = 0.05/framespersec; P.inter = -20; P.kon = 0.250/framespersec; P.koff = 0.062/framespersec; P.V = 1./framespersec; P.dmito = 1; P.kmito = 1; P.Cx = 113.0; P.Cy = 47.6; P.Cn = 158;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex1.csv"); expt++;
       P.alpha = 16; P.D = 0.100/framespersec;  P.inter = 0; P.kon = 0.250/framespersec; P.koff = 0.125/framespersec; P.V = 1./framespersec; P.dmito = 8; P.kmito = 1; P.Cx = 104.0; P.Cy = 61.4; P.Cn = 133;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex2.csv"); expt++;
-       P.alpha = 1; P.D = 0.100/framespersec;  P.inter = -20; P.kon = 0.188/framespersec; P.koff = 0.125/framespersec; P.V = 1./framespersec; P.dmito = 1; P.kmito = 1; P.Cx = 92.0; P.Cy = 34.2; P.Cn = 199;
+      P.alpha = 1; P.D = 0.100/framespersec;  P.inter = -20; P.kon = 0.188/framespersec; P.koff = 0.125/framespersec; P.V = 1./framespersec; P.dmito = 1; P.kmito = 1; P.Cx = 92.0; P.Cy = 34.2; P.Cn = 199;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex3.csv"); expt++;
       P.alpha = 8; P.D = 0.100/framespersec;  P.inter = 20; P.kon = 0.250/framespersec; P.koff = 0.188/framespersec; P.V = 0.5/framespersec; P.dmito = 1; P.kmito = 0.25; P.Cx = 194.1; P.Cy = 91.7; P.Cn = 36;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex4.csv"); expt++;
