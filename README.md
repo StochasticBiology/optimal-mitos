@@ -17,4 +17,4 @@ Details
 
 `cipro-rawtrajectories/` contains XML files describing mitochondrial trajectories for the new ciprofloxacin experiments. The first part of the `wrapper.sh` script from the repo above can also be used to summarise these dynamics.
 
-`generate-video.R` produces a visualisation of the social network construction process. `more-vid.sh` is an example of merging this with the original source data to give a visual overview of the pipeline.
+`generate-video.R` produces a visualisation of the social network construction process. This also calls the Bash scripts `concatenate-video.sh` and `stacker.sh` which use `ffmpeg` to process and compile the videos.
