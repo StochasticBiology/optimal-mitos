@@ -5,18 +5,26 @@ library(ggpubr)
 
 system("mkdir tmp-img/")
 
-for(expt.type %in% c("Empirical", "Simulation")) {
+for(expt.type in c("Empirical", "Simulation")) {
   if(expt.type == "Empirical") {
     
     # empirical studies
     src.titles = c("mtGFP 1",
-                   "mtGFP 2")
+                   "mtGFP 2",
+                   "msh1",
+                   "msh1 + cipro")
     src.traj.files = c("plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-3.xml-rawtrajs.csv",
-                       "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-16.xml-rawtrajs.csv")
+                       "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-16.xml-rawtrajs.csv",
+                       "plant-mito-dynamics/msh1-rawtrajectories/MSH-2.xml-rawtrajs.csv",
+                       "cipro-rawtrajectories/msh1Cip-38.xml-rawtrajs.csv")
     src.am.files = c("plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-3.xml-amlist.csv",
-                     "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-16.xml-amlist.csv")
+                     "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-16.xml-amlist.csv",
+                     "plant-mito-dynamics/msh1-rawtrajectories/MSH-2.xml-amlist.csv",
+                     "cipro-rawtrajectories/msh1Cip-38.xml-amlist.csv")
     src.vid.files = c("plant-mito-dynamics/mtgfp-videos/GFP3.avi",
-                      "plant-mito-dynamics/mtgfp-videos/GFP16.avi")
+                      "plant-mito-dynamics/mtgfp-videos/GFP16.avi",
+                      "plant-mito-dynamics/msh1-videos/MSH2.avi",
+                      "cipro-videos/msh1Cip-38-msh1onCip-s3-3ddriftcorrect-cell2.avi")
   } else {
     # simulation studies
     src.titles = paste("Simulation", 1:12)
