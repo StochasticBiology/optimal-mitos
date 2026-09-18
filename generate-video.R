@@ -1,22 +1,26 @@
 library(ggplot2)
-library(gridExtra)
 library(igraph)
 library(ggraph)
-library(ggbeeswarm)
 library(ggpubr)
-library(dplyr)
-library(tidyr)
-library(ggforce)
 
-src.traj.files = c("optex3.csv", 
+system("mkdir tmp-img/")
+src.titles = c("Wheat root",
+               "Simulation 1",
+               "Simulation 2",
+               "mtGFP 1",
+               "mtGFP 2")
+src.traj.files = c("~/Downloads/wheat root 17 aug - 40x - 6_0001_Tracks.xml-rawtrajs.csv",
+                   "optex3.csv", 
                    "optex2.csv", 
                    "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-3.xml-rawtrajs.csv",
                    "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-16.xml-rawtrajs.csv")
-src.am.files = c("optex3.csv-am.csv",
+src.am.files = c("~/Downloads/wheat root 17 aug - 40x - 6_0001_Tracks.xml-amlist.csv",
+                 "optex3.csv-am.csv",
                  "optex2.csv-am.csv", 
                  "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-3.xml-amlist.csv",
                  "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-16.xml-amlist.csv")
-src.vid.files = c(NA,
+src.vid.files = c("~/Downloads/wheat root 17 aug - 40x - 6_0001.oir - C=0.avi",
+                  NA,
                   NA,
                   "plant-mito-dynamics/mtgfp-videos/GFP3.avi",
                   "plant-mito-dynamics/mtgfp-videos/GFP16.avi")
@@ -54,12 +58,16 @@ for(expt in 1:length(src.traj.files)) {
     am.vis[[i]] = ggraph(layout_data) + 
       geom_edge_link(aes(alpha=-sign(frame-i)), color="#AAAAAA") + 
       geom_node_point(size=0.1) + 
-      scale_edge_alpha_continuous(range=c(0,1)) + theme_void() + theme(legend.position="none") +
-      theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
+      ggtitle(src.titles[expt]) +
+      scale_edge_alpha_continuous(range=c(0,1)) + 
+      theme_void() + theme(legend.position="none") +
+      theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"),
+            plot.title = element_text(hjust = 1, family = "serif")) 
+      
     
     # output pair of images to file and append filename to list
     sf = 2
-    fname = paste0(c("expt-", expt, "-vis-", i, ".png"), collapse="")
+    fname = paste0(c("tmp-img/expt-", expt, "-vis-", i, ".png"), collapse="")
     fset = c(fset, fname)
     png(fname, width=400*sf, height=200*sf, res=72*sf)
     print(ggarrange(cell.vis[[i]], am.vis[[i]]))
@@ -73,9 +81,12 @@ for(expt in 1:length(src.traj.files)) {
   if(!is.na(src.vid.files[expt])) {
     Sys.sleep(1)
     compile.str = paste0(c("./concatenate-video.sh expt-", expt, 
-                           "-vis-animated-smaller.gif ", src.vid.files[expt], " expt-", expt, 
+                           "-vis-animated-smaller.gif ", 
+                           gsub(" ", "\\\\ ", src.vid.files[expt]), 
+                           " expt-", expt, 
                            "-combined.mp4"), collapse="")
     system(compile.str)
+    
   } else {
     compile.str = paste0(c("convert expt-", expt, 
                            "-vis-animated-smaller.gif expt-", expt, 
