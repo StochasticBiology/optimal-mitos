@@ -32,3 +32,6 @@ gcc -o3 simulate.c -lm -o simulate.ce
 
 # run analysis and visualisation code
 Rscript plot-simulate-cipro.R
+
+# generate example videos (takes ~dozens of minutes)
+Rscript generate-video.R
