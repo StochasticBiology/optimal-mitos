@@ -5,7 +5,7 @@
 #define _EXPLICIT_REPEL 0
 #define _HARD_V_LIMIT 1
 #define _CYTOSKEL_SNAP 1
-#define _SPEED_DISTN 1
+#define _SPEED_DISTN 0 // changed evening 21 sep
 #define _HARD_BOUNDARY 0
 #define _CYT_PROXIMITY 3.
 
@@ -69,7 +69,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
   if(output != 0)
     {
       fp = fopen(fname, "w");
-      fprintf(fp, "frame,mito,x,y\n");
+      fprintf(fp, "frame,mito,active,x,y\n");
       fp2 = fopen(fname2, "w");
       fprintf(fp2, "frame,mito1,mito2\n");
     }
@@ -197,7 +197,8 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 			  //dx[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
 			  //dx[i] = P.V*((k % 2 == 0) ? 1 : -1);
 			  //			dx[i] = (P.inter && ix != 0 ? ix : (RND < 0.5 ? -1 : 1))*P.V;
-			  dx[i] = (P.inter && ix != 0 ? (ix > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? RND : 1.)*P.V;
+			  //dx[i] = (P.inter && ix != 0 ? (ix > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? RND : 1.)*P.V;
+			  dx[i] = (P.inter && ix != 0 ? (ix > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? 0.5+(RND*0.5) : 1.)*P.V;
 		  	  dy[i] = 0;
 			}
 		      } else {
@@ -207,7 +208,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 			  //dy[i] = (P.inter && iy != 0 ? iy : (RND < 0.5 ? -1 : 1))*P.V;
 			  //dy[i] = RND*P.V*((k % 2 == 0) ? 1 : -1);
 			  //			dy[i] = P.V*((k % 2 == 0) ? 1 : -1);
-			  dy[i] = (P.inter && iy != 0 ? (iy > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? RND : 1.)*P.V;
+			  dy[i] = (P.inter && iy != 0 ? (iy > 0 ? 1 : -1) : (RND < 0.5 ? -1 : 1))*(_SPEED_DISTN ? 0.5+(RND*0.5) : 1.)*P.V;
 			  dx[i] = 0;
 			}
 		      }
@@ -259,32 +260,43 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 	    if(output != 0 && sample == 0)
 	      {
 		for(i = 0; i < n; i++)
-		  fprintf(fp, "%li,%i,%.3f,%.3f\n", timer-100, i, x[i], y[i]);
+		  fprintf(fp, "%li,%i,%i,%.3f,%.3f\n", timer-100, i, active[i], x[i], y[i]);
 	      }
 	  }
 	}	    
 
       // record statistics of mean minimum distance and edges in adj mat
       meanmin[sample] = meanedges[sample] = 0;
+      int nactive = 0;
       for(i = 0; i < n; i++)
 	{
+	  if(active[i]) 
+	    nactive++;
+	  
 	  mindist = -1; edges = 0;
 	  for(j = 0; j < n; j++)
 	    {
-	      if(i != j)
+	      if(i != j && active[i] && active[j])
 		{
 		  r2 = (x[i]-x[j])*(x[i]-x[j]) + (y[i]-y[j])*(y[i]-y[j]);
+		  if(isnan(r2) || r2 < 0)
+		    printf("! %.3f %.3f %.3f %.3f\n", x[i], x[j], y[i], y[j]);
+		  
 		  if(r2 < mindist || mindist == -1)
 		    mindist = r2;
 		}
 	      if(am[i*n+j]) edges++;
 	    }
 	  // add to growing mean score
-	  meanmin[sample] += sqrt(mindist);
+	  if(active[i]) 
+	    meanmin[sample] += sqrt(mindist);
+	  
+	  if(isnan(meanmin[sample]))
+	    printf("!! %.3f\n", mindist);
 	  meanedges[sample] += (edges/2);
 	}
       // normalise mean score
-      meanmin[sample] /= n;
+      meanmin[sample] /= nactive;
       meanedges[sample] /= n;
     }
   
@@ -301,7 +313,7 @@ void AMFromSimulation(Params P, int nsample, double *meanmin, double *meanedges,
 int main(int argc, char *argv[])
 {
   Params P;
-  int i;
+  int i, j;
   FILE *fp;
   double *meanmin, *meanedges;
   int ns = 1;
@@ -335,14 +347,14 @@ int main(int argc, char *argv[])
 
   // big parameter sweep of system
 
-  if(seed != 0) {
+  if(seed > 0) {
     sprintf(fname, "outstatsscan-%i.csv", seed);
     fp= fopen(fname, "w");
     fprintf(fp, "seed,alpha,D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
     fclose(fp);
 
     // for the small set here we're looking at 13.5k simulations -- a couple of minutes
-    P.rhoon = 1; P.rhooff = 0; P.activep = 1;
+    P.rhoon = 0.01; P.rhooff = 0.01; P.activep = 0.9;
     // first, parameters with experimental bounds
     for(P.alpha = 1; P.alpha <= (_CYTOSKEL_SNAP ? 32 : 1); P.alpha *= 2) {
       for(P.D = 0.0; P.D <= 0.41; P.D *= 2) {
@@ -368,7 +380,7 @@ int main(int argc, char *argv[])
 			      // dimensions and density also have physical bounds but we just scan over a range
 			      P.Cx = 20+RND*180;
 			      P.Cy = 20+RND*80;
-			      P.Cn = 20+RND*180;
+			      P.Cn = 20+RND*400;
 			      AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
 			      // report these values in units of s^-1, not frame^-1
 			      fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", seed, P.alpha, P.D*framespersec, P.inter, P.kon*framespersec, P.koff*framespersec, P.V*framespersec, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
@@ -400,69 +412,72 @@ int main(int argc, char *argv[])
   if(seed == 0)
     {
       // here we go through a collection of specifically-chosen parameterisations, simulating behaviour and outputting trajectories to files
-      P.Cx = 100; P.Cy = 30; P.Cn = 140;
+      P.Cx = 100; P.Cy = 30; P.Cn = 180;
       P.alpha = 1;
       P.inter = 0;
       expt = 0; ns = 10;
+      //      P.rhoon = 0.0; P.rhooff = 0.0; P.activep = 1;
+      P.rhoon = 0.01; P.rhooff = 0.01; P.activep = 0.9;
+
       // 0
-      P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 0; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 0; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test0.csv"); expt++;
       // 1
-      P.D = scaled*1; P.kon = 0.1; P.koff = 0.1; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 0; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0.1; P.koff = 0.1;  P.V = scalev*1; P.dmito = 0; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test1.csv"); expt++;
       // 2
-      P.D = scaled*1; P.kon = 0.1; P.koff = 0.1; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*2; P.dmito = 0; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0.1; P.koff = 0.1;  P.V = scalev*2; P.dmito = 0; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test2.csv"); expt++;
       // 3
-      P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 5; P.kmito = 0.5;
+      P.D = scaled*1; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 5; P.kmito = 0.5;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test3.csv"); expt++;
       // 4
-      P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 5; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 5; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test4.csv"); expt++;
       // 5
-      P.D = scaled*0.25; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 5; P.kmito = 1;
+      P.D = scaled*0.25; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 5; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test5.csv"); expt++;
       // 6
-      P.D = scaled*0.5; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 5; P.kmito = 1;
+      P.D = scaled*0.5; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 5; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test6.csv"); expt++;
       // 7
-      P.D = scaled*1; P.kon = 1; P.koff = 0.1; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 2; P.kmito = 0.5;
+      P.D = scaled*1; P.kon = 1; P.koff = 0.1;  P.V = scalev*1; P.dmito = 2; P.kmito = 0.5;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test7.csv"); expt++;
   
       P.inter = 30;
       // 8
-      P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 0; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 0; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test8.csv"); expt++;
 
       P.inter = -1000;
       // 9
-      P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 0; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 0; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test9.csv"); expt++;
 
       P.inter = -20;
       // 10
-      P.D = scaled*1; P.kon = 0; P.koff = 0; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*1; P.dmito = 0; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0; P.koff = 0;  P.V = scalev*1; P.dmito = 0; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test10.csv"); expt++;
 
       P.inter = 0;
       // 11
-      P.D = scaled*1; P.kon = 0.1; P.koff = 0.1; P.rhoon = 1; P.rhooff = 0; P.activep = 1; P.V = scalev*5; P.dmito = 0; P.kmito = 1;
+      P.D = scaled*1; P.kon = 0.1; P.koff = 0.1;  P.V = scalev*5; P.dmito = 0; P.kmito = 1;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test11.csv"); expt++;
 
       /* some specific examples of optimality, taken after processing the output
 	 seed alpha     D inter   kon  koff V dmito kmito   expt sample        Cx       Cy  Cn  meanmin meanedges
 	 // optimal near bio
-	 209467     1     8 0.050   -20 0.250 0.062 1     1     1 209466      0 113.02317 47.61734 158 2.525649  7.329114
-	 222150     1     8 0.100    10 0.125 0.062 1     8     1 222149      0  20.46172 39.79724  33 2.470072  5.878788
+	 985093     3     4 0.100   -10 0.125 0.062 1     2   1.0 187092      0 125.25975 26.63864 206
+	 1822963    5     8 0.025    -5 0.250 0.062 1     1   1.0 226962      0 120.94996 34.96291 143
 	 // optimal high social
 	 54907      1     1 0.100   -20 0.188 0.125 1.00     1   1.0  54906      0  92.03070 34.16352 199 1.634590 12.391960
 	 // optimal low social
 	 780234     3     8 0.100    20 0.250 0.188 0.50     1 0.250 220233      0 194.0806 91.68886  36 11.506866  0.027778
       */
   
-      P.alpha = 8; P.D = 0.05/framespersec; P.inter = -20; P.kon = 0.250/framespersec; P.koff = 0.062/framespersec; P.V = 1./framespersec; P.dmito = 1; P.kmito = 1; P.Cx = 113.0; P.Cy = 47.6; P.Cn = 158;
+      P.alpha = 4; P.D = 0.1/framespersec; P.inter = -10; P.kon = 0.125/framespersec; P.koff = 0.062/framespersec; P.V = 1./framespersec; P.dmito = 2; P.kmito = 1; P.Cx = 125.3; P.Cy = 26.6; P.Cn = 206;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex1.csv"); expt++;
-      P.alpha = 16; P.D = 0.100/framespersec;  P.inter = 0; P.kon = 0.250/framespersec; P.koff = 0.125/framespersec; P.V = 1./framespersec; P.dmito = 8; P.kmito = 1; P.Cx = 104.0; P.Cy = 61.4; P.Cn = 133;
+      P.alpha = 8; P.D = 0.025/framespersec;  P.inter = -5; P.kon = 0.250/framespersec; P.koff = 0.062/framespersec; P.V = 1./framespersec; P.dmito = 1; P.kmito = 1; P.Cx = 121.0; P.Cy = 35.0; P.Cn = 143;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex2.csv"); expt++;
       P.alpha = 1; P.D = 0.100/framespersec;  P.inter = -20; P.kon = 0.188/framespersec; P.koff = 0.125/framespersec; P.V = 1./framespersec; P.dmito = 1; P.kmito = 1; P.Cx = 92.0; P.Cy = 34.2; P.Cn = 199;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "optex3.csv"); expt++;
@@ -474,9 +489,61 @@ int main(int argc, char *argv[])
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test12.csv"); expt++;
   
       // cytoskeleton granularity, interaction
-      P.D = 0.0; P.inter = 20; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 8; P.kmito = 2; P.Cx = 140.0; P.Cy = 45.4; P.Cn = 120; P.alpha = 20;
+      P.D = 0.0; P.inter = 20; P.kon = 0.1; P.koff = 0.12; P.V = 1.6; P.dmito = 8; P.kmito = 2; P.Cx = 140.0; P.Cy = 45.4; P.Cn = 120; P.alpha = 20;
       AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test13.csv"); expt++;
+
+      P.Cx = 100; P.Cy = 50; P.Cn = 400;
+      P.alpha = 1;
+      P.inter = 0;
+      expt = 0; ns = 10;
+      
+      P.D = 0.05; P.inter = 20; P.kon = 1; P.koff = 0.25; P.V = 1.6; P.dmito = 8; P.kmito = 2; P.alpha = 20;
+      AMFromSimulation(P, ns, &(meanmin[ns*expt]), &(meanedges[ns*expt]), 1, "test14.csv"); expt++;
+
     }
+  if(seed == -1) {
+    sprintf(fname, "outstatsrep-%i.csv", seed);
+    fp= fopen(fname, "w");
+    fprintf(fp, "seed,alpha,D,inter,kon,koff,V,dmito,kmito,expt,sample,Cx,Cy,Cn,meanmin,meanedges\n");
+    fclose(fp);
+    expt = 0;
+    
+    for(i = 0; i < 100; i++)
+      {
+	
+	P.rhoon = 0.01; P.rhooff = 0.01; P.activep = 0.9;
+	// first, parameters with experimental bounds
+	P.alpha = RND*31 + 1;
+	P.D = RND*0.4;
+	P.V = RND*2;
+	P.kon = RND*0.5;
+	P.koff = RND*0.5;
+	P.dmito = RND*16+1;
+	P.kmito = 1./RND*8;
+	interscale = (RND < 0.5 ? 0 : RND * 20);
+	interdir = (RND < 0.5 ? -1 : 1);
+	P.inter = interscale*interdir;
+	// report these values in units of s^-1, not frame^-1
+	printf("%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i\n", P.alpha, P.D*framespersec, P.inter, P.kon*framespersec, P.koff*framespersec, P.V*framespersec, P.dmito, P.kmito, expt, i);
+	//			  sprintf(str, "expt-0.csv");
+	fp= fopen(fname, "a");
+	// dimensions and density also have physical bounds but we just scan over a range
+	P.Cx = 20+RND*180;
+	P.Cy = 20+RND*80;
+	P.Cn = 20+RND*400;
+	ns = 10;
+	for(j = 0; j < ns; j++)
+	  {
+
+	    AMFromSimulation(P, 1, meanmin, meanedges, 0, str);
+	    // report these values in units of s^-1, not frame^-1
+	    fprintf(fp, "%i,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%i,%i,%f,%f,%i,%f,%f\n", j, P.alpha, P.D*framespersec, P.inter, P.kon*framespersec, P.koff*framespersec, P.V*framespersec, P.dmito, P.kmito, expt, i, P.Cx, P.Cy, P.Cn, meanmin[0], meanedges[0]);
+	  }
+	expt++;
+	fclose(fp);
+      }
+  }
+  
     
   return 0;
 }

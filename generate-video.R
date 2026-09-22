@@ -12,7 +12,7 @@ for(expt.type in c("Empirical", "Simulation")) {
     src.titles = c("mtGFP 1",
                    "mtGFP 2",
                    "msh1",
-                   "msh1 + cipro")
+                   "msh1 cipro")
     src.traj.files = c("plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-3.xml-rawtrajs.csv",
                        "plant-mito-dynamics/mtgfp-rawtrajectories/mtGFP-16.xml-rawtrajs.csv",
                        "plant-mito-dynamics/msh1-rawtrajectories/MSH-2.xml-rawtrajs.csv",
@@ -26,11 +26,13 @@ for(expt.type in c("Empirical", "Simulation")) {
                       "plant-mito-dynamics/msh1-videos/MSH2.avi",
                       "cipro-videos/msh1Cip-38-msh1onCip-s3-3ddriftcorrect-cell2.avi")
   } else {
+    simset = 1:14
+    #simset = 14
     # simulation studies
-    src.titles = paste("Simulation", 1:12)
-    src.traj.files = paste("test", 1:12, ".csv", sep="")
-    src.am.files = paste("test", 1:12, ".csv-am.csv", sep="")
-    src.vid.files = rep(NA, 12)
+    src.titles = paste("Simulation", simset)
+    src.traj.files = paste("test", simset, ".csv", sep="")
+    src.am.files = paste("test", simset, ".csv-am.csv", sep="")
+    src.vid.files = rep(NA, length(simset))
   }
   
   for(expt in 1:length(src.traj.files)) {
@@ -42,7 +44,7 @@ for(expt.type in c("Empirical", "Simulation")) {
     sub.traj = read.csv(src.traj.files[expt])
     sub.am = read.csv(src.am.files[expt])
     if(colnames(sub.traj)[1] == "frame") {
-      colnames(sub.traj) = c("t", "traj", "x", "y")
+      colnames(sub.traj) = c("t", "traj", "active", "x", "y")
     }
     sub.amg = graph_from_edgelist(as.matrix(sub.am[,2:3]+1, directed=FALSE))
     # pull the frame in which each edge first appears
@@ -54,12 +56,17 @@ for(expt.type in c("Empirical", "Simulation")) {
     # initialise list of filenames
     fset = c()
     # loop through timesteps
-    for(i in 1:max(sub.traj$t)) {
+    if(expt.type == "Simulation") {
+      t.max = 100
+    } else {
+      t.max = max(sub.traj$t)
+    }
+    for(i in 1:t.max) {
       # pull trajectories up to this time point, and plot
       sub.traj.t = sub.traj[sub.traj$t <= i,]
       cell.vis[[i]] = ggplot()  + 
-        geom_path(data=sub.traj.t, aes(x=x,y=y,color=factor(traj)), alpha=0.5) + 
-        geom_point(data=sub.traj.t[sub.traj.t$t == i,], aes(x=x,y=y), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
+        geom_path(data=sub.traj.t, aes(x=x,y=y,color=factor(traj)), alpha=0.5, linewidth = 0.25) + 
+        geom_point(data=sub.traj.t[sub.traj.t$t == i & sub.traj.t$active == 1,], aes(x=x,y=y), size=0.5, color="#66FF66") +theme_void() +theme(legend.position="none")  + 
         theme(plot.margin = unit(c(md,md,md,md), "cm"),
               panel.background = element_rect(fill = "black", color = "black")) +
         xlim(0, max(c(sub.traj.t$x, sub.traj.t$y))) + 
@@ -67,7 +74,7 @@ for(expt.type in c("Empirical", "Simulation")) {
       
       # plot social network using previous layout. alpha reports whether we've passed the timepoint where each edge appears or not
       am.vis[[i]] = ggraph(layout_data) + 
-        geom_edge_link(aes(alpha=-sign(frame-i)), color="#AAAAAA") + 
+        geom_edge_link(aes(alpha=-sign(frame-i)), color="#AAAAAA", linewidth = 0.25) + 
         geom_node_point(size=0.1) + 
         ggtitle(src.titles[expt]) +
         scale_edge_alpha_continuous(range=c(0,1)) + 

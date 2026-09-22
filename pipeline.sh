@@ -21,6 +21,8 @@ done
 # run simulations
 cd ..
 gcc -o3 simulate.c -lm -o simulate.ce
+# set-valued optimisation demo
+./simulate.ce -1 > tmp-1 &
 # given parameter sets
 ./simulate.ce 0 > tmp0 &
 # parameter scans (take ~hours)

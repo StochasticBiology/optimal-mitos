@@ -36,7 +36,7 @@ library(sp)
 exptset = ""
 picset = 10
 g1 = g1a = g3 = list()
-for(expt in 1:14) {
+for(expt in 1:15) {
   # read trajectories
   fname = paste(c("test", expt-1, exptset, ".csv"), collapse="")
   traj.df = read.csv(fname)
@@ -46,7 +46,7 @@ for(expt in 1:14) {
     geom_path() +theme_void() +theme(legend.position="none") 
   
   # subset just final point and plot these in green with trajectories
-  sub1 = traj.df[traj.df$frame == max(traj.df$frame),]
+  sub1 = traj.df[traj.df$frame == max(traj.df$frame) & traj.df$active == 1,]
   #g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
   
   this.x1 = min(sub$y)-20
@@ -65,9 +65,12 @@ for(expt in 1:14) {
   
   # pull adj mat and plot
   am.df = read.csv(paste(c("test", expt-1, exptset, ".csv-am.csv"), collapse=""))
-  edgelist.frame = as.matrix(data.frame(t1 = as.character(am.df$mito1), t2 = as.character(am.df$mito2))) 
-  amg = graph_from_edgelist(edgelist.frame, directed=F)
-  g3[[expt]] = ggraph(amg, layout="nicely") + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
+  
+ #edgelist.frame = as.matrix(data.frame(t1 = as.character(am.df$mito1), t2 = as.character(am.df$mito2))) 
+  #amg = graph_from_edgelist(edgelist.frame, directed=F)
+  sub.amg = graph_from_edgelist(as.matrix(am.df[,2:3]+1, directed=FALSE))
+  layout_data = create_layout(sub.amg, layout="nicely")
+  g3[[expt]] = ggraph(layout_data) + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
     theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
 }
 
@@ -92,6 +95,9 @@ ggarrange(g1a[[4]], g3[[4]],
           g1a[[12]], g3[[12]], nrow=2, ncol=4,
           widths=c(1,2,1,2))
 dev.off()
+
+g1a[[16]] = g1a[[15]]
+g3[[16]] = g3[[15]]
 
 ga = ggarrange(plotlist = g1a, nrow=2, ncol=length(g1a)/2)
 gc = ggarrange(plotlist = g3, nrow=2, ncol=length(g1a)/2)
@@ -132,7 +138,7 @@ for(expt in 1:4) {
     geom_path() +theme_void() +theme(legend.position="none") 
   
   # subset just final point and plot these in green with trajectories
-  sub1 = traj.df[traj.df$frame == max(traj.df$frame),]
+  sub1 = traj.df[traj.df$frame == max(traj.df$frame) & traj.df$active == 1,]
   #g1a[[expt]] = ggplot()  + geom_rect(aes(xmin = -2, xmax = 32, ymin = -2, ymax = 102), fill="black") +
   this.x1 = min(traj.df$y)-20
   this.x2 = max(traj.df$y)+20
@@ -150,9 +156,10 @@ for(expt in 1:4) {
   
   # pull adj mat and plot
   am.df = read.csv(paste(c("test", expt-1, exptset, ".csv-am.csv"), collapse=""))
-  edgelist.frame = as.matrix(data.frame(t1 = as.character(am.df$mito1), t2 = as.character(am.df$mito2))) 
-  amg = graph_from_edgelist(edgelist.frame, directed=F)
-  opt.g3[[expt]] = ggraph(amg, layout="nicely") + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
+
+  sub.amg = graph_from_edgelist(as.matrix(am.df[,2:3]+1, directed=FALSE))
+  layout_data = create_layout(sub.amg, layout="nicely")
+  opt.g3[[expt]] = ggraph(layout_data) + geom_edge_link(alpha=0.4, color="#AAAAAA") + geom_node_point(size=0.1) + theme_void() +
     theme(plot.margin = unit(c(.1,.1,.1,.1), "cm"))
 }
 
@@ -198,7 +205,7 @@ means.df <- stats.df %>%
 
 # downsample for plotting convenience
 set.seed(1)
-samples = stats.df[runif(10000, min=1, max=nrow(stats.df)),]
+samples = stats.df[runif(100000, min=1, max=nrow(stats.df)),]
 samples = samples[!is.na(samples$x) & !is.na(samples$y) & samples$y < 1000,]
 
 # assign categories to samples based on trading performance
@@ -465,10 +472,10 @@ g.all.1 = ggplot() +
 
 g.all.1.alt = ggplot() +
   geom_point(data=samples[samples$V<=2 & samples$kmito*samples$D < 0.1 & 
-                            samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1) +
+                            samples$Cn < 150,], aes(x=x,y=y,color=log(stat)), alpha=1, size=0.75) +
   scale_color_viridis() +
   geom_point(data=expts.df[expts.df$frame==key.frame,], 
-             aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), stroke = 0.1, size=2, shape=21) + 
+             aes(x = log(1/mean.min.dist), y=log(1/mean.degree), fill=glabel), stroke = 0.3, size=2, shape=21) + 
   scale_fill_manual(values=col.set) +
   labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]", color="Pareto statistic", fill="Experiment") +
   theme_minimal()
@@ -639,24 +646,20 @@ wilcox.test(plot.dists$d[plot.dists$label=="msh1"], plot.dists$d[plot.dists$labe
 #### TASK 8: consider set-valued optimisation picture
 
 #### still a WIP
-nsamp = nrow(stats.df[stats.df$expt == 1,])
+set.df = read.csv("outstatsrep--1.csv")
+set.df$x = log(1/set.df$meanmin)
+set.df$y = log(1/set.df$meanedges)
 
-set.seed(10)
-eref = sample(1:max(stats.df$expt), 30)
 polys.df = ellipses.df = data.frame()
-for(e in eref) {
-  sub = stats.df[stats.df$expt == e,]
-  sub$x = log(1/sub$meanmin)
-  sub$y = log(1/sub$meanedges)
+for(e in unique(set.df$expt)) {
+  sub = set.df[set.df$expt == e,]
   sub = sub[is.finite(sub$x) & is.finite(sub$y),]
-  if(nrow(sub) > 2) {
-  hull = chull(sub$x, sub$y)
+   hull = chull(sub$x, sub$y)
   tmp = data.frame(e = e, xs = sub$x[hull], ys = sub$y[hull])
   polys.df = rbind(polys.df, tmp)
   ellipses.df = rbind(ellipses.df, data.frame(e = e,
                                               x0=mean(sub$x), y0=mean(sub$y),
-                                              a=sd(sub$x)/sqrt(nsamp), b=sd(sub$y)/sqrt(nsamp)))
-  }
+                                              a=sd(sub$x), b=sd(sub$y)))
 }
 
 g.set.1 = ggplot() + 
@@ -669,14 +672,14 @@ g.set.1 = ggplot() +
 
 g.set.2 = ggplot() + 
   geom_polygon(data=polys.df, aes(x=xs, y=ys, fill=factor(e)), alpha = 0.4) + 
-  geom_point(data=stats.df[stats.df$expt %in% eref & stats.df$meanedges > 0,], aes(x = log(1/meanmin), y=log(1/meanedges), color=factor(expt))) +
+  geom_point(data=set.df, aes(x =x, y=y, color=factor(expt)), size=0.2) +
   theme_minimal() + theme(legend.position = "none") +
   scale_fill_viridis_d() + scale_color_viridis_d() +
   labs(x="Clumping [log(1/min dist)]", y="Loneliness [log(1/mean degree)]")
 
 sf = 2
 mypng(protocol, "set-valued.png", width=600*sf, height=250*sf, res=72*sf)
-ggarrange(g.set.1, g.set.2)
+ggarrange(g.set.2, g.set.1, labels=c("A", "B"))
 dev.off()
 
 #### TASK 9: "inference without data" and inference
@@ -788,7 +791,7 @@ dev.off()
 
 # grab some example optimal parameterisations
 colnames(mins)
-mins[mins$y > -2 & mins$y < -1.2,]
+mins[mins$y > -2.3 & mins$y < -1.2,]
 
 #### TASK 10: parameter determinants of Pareto front
 
