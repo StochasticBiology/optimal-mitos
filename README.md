@@ -11,7 +11,7 @@ This repo contains agent-based simulation code, data analysis code, and summarie
 
 Details
 ----
-`simulate.c` runs quasi-physical simulation of mitochondria in the cell, constructing trajectories and adjacency matrices. It does a parameter sweep and several specific parameterisation cases.
+`simulate.c` runs quasi-physical simulation of mitochondria in the cell, constructing trajectories and adjacency matrices. It takes one command-line argument, doing a parameter sweep (positive integer arguments), several specific parameterisation cases (argument 0), or repeated instances of random parameterisations (argument -1).
 
 `plot-simulate-cipro.R` plots the output from these simulations and also a comparison with bio data. For this comparison with experiments, pull https://github.com/StochasticBiology/plant-mito-dynamics into `./plant-mito-dynamics-main/` and run (the first part of) `wrapper.sh` from there. This analyses the trajectories in that repo and summarises the adjacency matrices and coordinates for inclusion here.
 
